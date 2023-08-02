@@ -174,7 +174,7 @@ void GetFresnel (
         double launch_angle, double rec_angle,
         double refl_angle, Position &posnu, Vector &launch_vector, Vector &rec_vector, Settings *settings1, double &fresnel, double &mag,
         Vector &Pol // will read the polarization at the source and return polarization at the target antenna
-        );
+        , Vector &S_launch_vector, Vector &S_rec_vector , Vector nvec);
 
   // new ARA ice attenuation measurement values (at 300 MHz)
   //

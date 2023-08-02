@@ -1808,8 +1808,8 @@ void IceModel::GetFresnel_pokey (double i_ang, double n1, double n2, double &r, 
 void IceModel::GetFresnel (
         double launch_angle, double rec_angle,
         double refl_angle, Position &posnu, Vector &launch_vector, Vector &rec_vector, Settings *settings1, double &fresnel, double &mag,
-        Vector &Pol // will read the polarization at the source and return polarization at the target antenna
-        ) {
+        Vector &Pol// will read the polarization at the source and return polarization at the target antenna
+        , Vector &S_launch_vector, Vector &S_rec_vector , Vector nvec){
 
     double n1 = 1.35;   // index of refraction at the firn
     double n2 = 1.;     // index of refraction at the air

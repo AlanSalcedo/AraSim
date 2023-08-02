@@ -9,8 +9,6 @@
 #include <vector>
 #include "TGraph.h"
 
-#include "Position.h"
-
 #ifndef __CINT__
 //Include output format to enable reading by analysis software AraRoot
 #ifdef ARA_UTIL_EXISTS
@@ -113,7 +111,6 @@ class Antenna_r {
 
         vector <int> SignalBin; // the bin number where the center of signal located. we can compare this value to Trig_Pass value to have likely triggered ray trace solution
 
-        vector <double> SignalBinTime; ///< the time of center of bin where signal should locate after sim decided the readout window. MK added -2023-05-18-
 
         vector <int> noise_ID;      // information about which pure noise waveform is used for trigger analysis
 
@@ -139,7 +136,7 @@ class Antenna_r {
         void clear ();  // clear all vector format information for next event
         void clear_useless ( Settings *settings1 );  // clear all vector information which are useless
 
-        ClassDef(Antenna_r,3);
+        ClassDef(Antenna_r,2);
 };
 
 class String_r {
@@ -264,9 +261,9 @@ class Report {
 
         int GetChNumFromArbChID( Detector *detector, int ID, int StationIndex, Settings *settings1);// get actual ch number from arb chID
 
-        Vector GetPolarization (Vector &nnu, Vector &launch_vector);
+        Vector GetPolarization (Vector &nnu, Vector &launch_vector, Vector &S_launch_vector);
 
-        void GetParameters (Position &src, Position &trg, Vector &nnu, double &viewangle, double receive_angle, Vector &launch_vector, Vector &receive_vector, Vector &n_trg_slappy, Vector &n_trg_pokey );    // get viewangle, launch, receive vectors  (it reads launch angle as a viewangle and returns actual viewangle)
+        void GetParameters (Position &src, Position &trg, Vector &nnu, double &viewangle, double receive_angle, Vector &launch_vector, Vector &receive_vector, Vector &n_trg_slappy, Vector &n_trg_pokey , Vector &S_launch_vector, Vector &S_receive_vector, Vector &nvec);    // get viewangle, launch, receive vectors  (it reads launch angle as a viewangle and returns actual viewangle)
 
         double GaintoHeight(double gain, double freq, double n_medium);
         
@@ -279,9 +276,9 @@ class Report {
         void ApplyAntFactors_Tdomain_FirstTwo ( double heff, double heff_lastbin, Vector &n_trg_pokey, Vector &n_trg_slappy, Vector &Pol_vector, int ant_type, double &pol_factor, double &vm_bin0, double &vm_bin1, double antenna_theta, double antenna_phi);
 
 
-        void ApplyElect_Tdomain(double freq, Detector *detector, double &vm_real, double &vm_img, int gain_ch_no, Settings *settings1);
+        void ApplyElect_Tdomain(double freq, Detector *detector, double &vm_real, double &vm_img, Settings *settings1);
 
-        void ApplyElect_Tdomain_FirstTwo(double freq0, double freq1, Detector *detector, double &vm_bin0, double &vm_bin1, int gain_ch_no);
+        void ApplyElect_Tdomain_FirstTwo(double freq0, double freq1, Detector *detector, double &vm_bin0, double &vm_bin1);
 
 
 
@@ -311,7 +308,7 @@ class Report {
         void ApplyRFCM_databin(int ch, int bin_n, Detector *detector, double &vmmhz, double RFCM_OFFSET);
 
 
-        void GetAngleAnt(Vector &rec_vector, Position &antenna, double &ant_theta, double &ant_phi);
+        void GetAngleAnt(Vector &rec_vector, Position &antenna, double &ant_theta, double &ant_phi, Vector &S_rec_vector);
 
         void GetNoiseWaveforms(Settings *settings1, Detector *detector, double vhz_noise, double *vnoise);
         void GetNoiseWaveforms_ch(Settings *settings1, Detector *detector, double vhz_noise, double *vnoise, int ch);

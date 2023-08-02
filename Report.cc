@@ -9,6 +9,7 @@
 #include "Tools.h"
 #include "Trigger.h"
 #include "Constants.h"
+#include "TVector3.h"
 
 #include <iostream>
 #include <sstream>
@@ -193,7 +194,6 @@ void Antenna_r::clear() {   // if any vector variable added in Antenna_r, need t
     Vm_zoom_T.clear();
 
     SignalBin.clear();
-    SignalBinTime.clear();
     SignalExt.clear(); 
     
     SCT_threshold_pass.clear();
@@ -308,12 +308,24 @@ void Report::clear_useless(Settings *settings1) {   // to reduce the size of out
 void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, RaySolver *raysolver, Signal *signal, IceModel *icemodel, Settings *settings1, Trigger *trigger, int evt)
 {
 
+    // MACHTAY LOOK HERE 11/7/22
+    // Treat launch_vector and receive_vector as k-vector
+    // Make new vectors for the S-vector
+    // Change launch and receive_vectors to be TVector3
+    // See getSfromk in birefringence.cc
+    // Make sure to catch all of the functions that are currently asking for a position
     int ray_sol_cnt;
     double viewangle;
-    Position launch_vector; // direction of ray at the source
-    Position receive_vector;    // direction of ray at the target antenna
-    Vector n_trg_pokey; // unit pokey vector at the target
-    Vector n_trg_slappy;    // unit slappy vector at the target
+    //TVector3 launch_vector; // direction of ray at the source // rename to "k-vector" 
+    //TVector3 receive_vector;    // direction of ray at the target antenna
+
+    Position launch_vector;	// direction of ray at the source // rename to "k-vector" 
+    Position receive_vector;	// direction of ray at the target antenna
+    Position S_launch_vector;	// direction of energy flow at source
+    Position S_receive_vector;	// direction of energy flow at target
+    Vector n_trg_pokey;		// unit pokey vector at the target
+    Vector n_trg_slappy;	// unit slappy vector at the target
+		Vector nvec(1, 1, 1);					// index of refraction vector
     vector<vector < double>> ray_output;
 
     double vmmhz1m_tmp, vmmhz1m_sum, vmmhz1m_em;    // currently not using vmmhz1m_em
@@ -388,18 +400,7 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
 
                 stations[i].strings[j].antennas[k].clear(); // clear data in antenna which stored in previous event
 
-		// This (gain_ch_no) is used for per-channel gain implementation. 
-		// It is used in all instances of ApplyElect_Tdomain() and ApplyElect_Tdomain_FirstTwo(), to indicate channel number
-		// Note that channel numbering is different for DETECTOR==4 than for the other modes (1-3). See that in the definition of GetChannelfromStringAntenna() 
-		int gain_ch_no;
-		if (settings1->DETECTOR==4){
-			gain_ch_no = detector->GetChannelfromStringAntenna (i, j, k, settings1)-1;
-		}
-		else{
-			gain_ch_no = detector->GetChannelfromStringAntenna (i, j, k, settings1);
-		}
-		
-		// run ray solver, see if solution exist
+                // run ray solver, see if solution exist
                 // if not, skip (set something like Sol_No = 0;
                 // if solution exist, calculate view angle and calculate TaperVmMHz
 
@@ -480,7 +481,8 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                                     viewangle,  // inputs launch_angle, returns viewangle
                                     ray_output[2][ray_sol_cnt], // receive_angle
                                     launch_vector, receive_vector,
-                                    n_trg_slappy, n_trg_pokey);
+                                    n_trg_slappy, n_trg_pokey
+																		, S_launch_vector, S_receive_vector, nvec);
 
                                 // check viewangle that if ray in near Cherenkov cone
                                 if (viewangle * DEGRAD > 55. && viewangle * DEGRAD < 57.)
@@ -506,7 +508,9 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                                 stations[i].strings[j].antennas[k].SignalExt.resize(ray_sol_cnt + 1);
 
                                 // calculate the polarization vector at the source
-                                Pol_vector = GetPolarization(event->Nu_Interaction[0].nnu, launch_vector);
+                                // MACHTAY LOOK HERE
+                                // Again, modify for TVector3
+                                Pol_vector = GetPolarization(event->Nu_Interaction[0].nnu, launch_vector, S_launch_vector);
 
                                 icemodel->GetFresnel(ray_output[1][ray_sol_cnt],    // launch_angle
                                     ray_output[2][ray_sol_cnt], // rec_angle
@@ -517,7 +521,9 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                                     settings1,
                                     fresnel,
                                     mag,
-                                    Pol_vector);    // input src Pol and return Pol at trg
+                                    Pol_vector
+																		, S_launch_vector,
+																		S_receive_vector, nvec);    // input src Pol and return Pol at trg
 
                                 if (ray_output[3][ray_sol_cnt] < PI / 2.)
                                 {
@@ -536,7 +542,8 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                                 vmmhz1m_sum = 0;
 
                                 // get the arrival angle at the antenna, and store the relevant polarization factors
-                                GetAngleAnt(receive_vector, detector->stations[i].strings[j].antennas[k], antenna_theta, antenna_phi);  // get theta, phi for signal ray arrived at antenna
+                                // MACHTAY LOOK HERE 11/7/22
+                                GetAngleAnt(receive_vector, detector->stations[i].strings[j].antennas[k], antenna_theta, antenna_phi, S_receive_vector);  // get theta, phi for signal ray arrived at antenna
 
                                 Vector thetaHat = Vector(cos(antenna_theta *(PI / 180)) *cos(antenna_phi *(PI / 180)),
                                     cos(antenna_theta *(PI / 180)) *sin(antenna_phi *(PI / 180)),
@@ -967,11 +974,11 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                                                     // apply entire elect chain gain, phase
                                                     if (n > 0)
                                                     {
-                                                        ApplyElect_Tdomain(freq_tmp *1.e-6, detector, V_forfft[2 *n], V_forfft[2 *n + 1], gain_ch_no, settings1);
-						    }
+                                                        ApplyElect_Tdomain(freq_tmp *1.e-6, detector, V_forfft[2 *n], V_forfft[2 *n + 1], settings1);
+                                                    }
                                                     else
                                                     {
-                                                        ApplyElect_Tdomain_FirstTwo(freq_tmp *1.e-6, freq_lastbin *1.e-6, detector, V_forfft[2 *n], V_forfft[2 *n + 1], gain_ch_no);
+                                                        ApplyElect_Tdomain_FirstTwo(freq_tmp *1.e-6, freq_lastbin *1.e-6, detector, V_forfft[2 *n], V_forfft[2 *n + 1]);
                                                     }
                                                 }   // end for freq bin
 
@@ -1246,11 +1253,11 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                                                 //
                                                 if (n > 0)
                                                 {
-                                                    ApplyElect_Tdomain(freq_tmp *1.e-6, detector, V_forfft[2 *n], V_forfft[2 *n + 1], gain_ch_no, settings1);
-						}
+                                                    ApplyElect_Tdomain(freq_tmp *1.e-6, detector, V_forfft[2 *n], V_forfft[2 *n + 1], settings1);
+                                                }
                                                 else
                                                 {
-                                                    ApplyElect_Tdomain_FirstTwo(freq_tmp *1.e-6, freq_lastbin *1.e-6, detector, V_forfft[2 *n], V_forfft[2 *n + 1], gain_ch_no);
+                                                    ApplyElect_Tdomain_FirstTwo(freq_tmp *1.e-6, freq_lastbin *1.e-6, detector, V_forfft[2 *n], V_forfft[2 *n + 1]);
                                                 }
                                             }   // end for freq bin
 
@@ -1583,11 +1590,11 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                                             //
                                             if (n > 0)
                                             {
-                                                ApplyElect_Tdomain(freq_tmp *1.e-6, detector, V_forfft[2 *n], V_forfft[2 *n + 1], gain_ch_no, settings1);
+                                                ApplyElect_Tdomain(freq_tmp *1.e-6, detector, V_forfft[2 *n], V_forfft[2 *n + 1], settings1);
                                             }
                                             else
                                             {
-                                                ApplyElect_Tdomain_FirstTwo(freq_tmp *1.e-6, freq_lastbin *1.e-6, detector, V_forfft[2 *n], V_forfft[2 *n + 1], gain_ch_no);
+                                                ApplyElect_Tdomain_FirstTwo(freq_tmp *1.e-6, freq_lastbin *1.e-6, detector, V_forfft[2 *n], V_forfft[2 *n + 1]);
                                             }
                                         }   // end for freq bin
 
@@ -1730,6 +1737,7 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                 detector->ReadFilter_New(settings1);
                 detector->ReadPreamp_New(settings1);
                 detector->ReadFOAM_New(settings1);
+                detector->ReadElectChain_New(settings1);
 
                 if (settings1->USE_TESTBED_RFCM_ON == 1)
                 {
@@ -2178,20 +2186,8 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
 
                             int string_i = detector->getStringfromArbAntID(i, trig_j);
                             int antenna_i = detector->getAntennafromArbAntID(i, trig_j);
-			    int channel_num = detector->GetChannelfromStringAntenna(i, string_i, antenna_i, settings1);
 
-			    if (!(settings1->DETECTOR==4)){
- 			    	channel_num = channel_num+1; // Channel numbering is different for DETECTOR=(1,2,3) than for DETECTOR = 4 in GetChannelfromStringAntenna(), it needs that shift 
- 			    }
-
-
-			    if( detector->GetTrigMasking(channel_num-1)==0){ //Antenna Masking (masked_ant=0 means this antenna should be ignored from trigger)
-				trig_j++;
-				continue;	
-			    }
-
-			    int offset = detector->GetTrigOffset(channel_num-1, settings1);
-
+                            int channel_num = detector->GetChannelfromStringAntenna(i, string_i, antenna_i, settings1);
                             // check if we want to use BH chs only for trigger analysis
                             //if (settings1->TRIG_ONLY_BH_ON == 1) {
                             if ((settings1->TRIG_ONLY_BH_ON == 1) && (settings1->DETECTOR == 3))
@@ -2423,13 +2419,12 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                                     if (settings1->NOISE_CHANNEL_MODE == 0)
                                     {
                                         // with threshold offset by chs
-                                        if( trig_i+offset+trig_bin >= settings1->DATA_BIN_SIZE ) break; //if trigger window hits wf end, cannot scan this channel further with this trig_i
-                                        if (trigger->Full_window[trig_j][trig_i + trig_bin + offset] < (detector->GetThres(i, channel_num - 1, settings1) *trigger->rmsdiode *detector->GetThresOffset(i, channel_num - 1, settings1)))
+                                        if (trigger->Full_window[trig_j][trig_i + trig_bin] < (detector->GetThres(i, channel_num - 1, settings1) *trigger->rmsdiode *detector->GetThresOffset(i, channel_num - 1, settings1)))
                                         {
                                             // if this channel passed the trigger!
                                             //cout<<"trigger passed at bin "<<trig_i+trig_bin<<" ch : "<<trig_j<<endl;
                                             //stations[i].strings[(int)((trig_j)/4)].antennas[(int)((trig_j)%4)].Trig_Pass = trig_i+trig_bin;
-                                            stations[i].strings[string_i].antennas[antenna_i].Trig_Pass = trig_i + trig_bin + offset;
+                                            stations[i].strings[string_i].antennas[antenna_i].Trig_Pass = trig_i + trig_bin;
                                             N_pass++;
                                             if (detector->stations[i].strings[string_i].antennas[antenna_i].type == 0)
                                             {
@@ -2449,11 +2444,10 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                                     else if (settings1->NOISE_CHANNEL_MODE == 1)
                                     {
                                         // with threshold offset by chs
-                                        if( trig_i+offset+trig_bin >= settings1->DATA_BIN_SIZE ) break; //if trigger window hits wf end, cannot scan this channel further with this trig_i
-                                        if (trigger->Full_window[trig_j][trig_i + trig_bin + offset] < (detector->GetThres(i, channel_num - 1, settings1) *trigger->rmsdiode_ch[channel_num - 1] *detector->GetThresOffset(i, channel_num - 1, settings1)))
+                                        if (trigger->Full_window[trig_j][trig_i + trig_bin] < (detector->GetThres(i, channel_num - 1, settings1) *trigger->rmsdiode_ch[channel_num - 1] *detector->GetThresOffset(i, channel_num - 1, settings1)))
                                         {
                                             // if this channel passed the trigger!
-                                            stations[i].strings[string_i].antennas[antenna_i].Trig_Pass = trig_i + trig_bin + offset;
+                                            stations[i].strings[string_i].antennas[antenna_i].Trig_Pass = trig_i + trig_bin;
                                             N_pass++;
                                             if (detector->stations[i].strings[string_i].antennas[antenna_i].type == 0)
                                             {
@@ -2633,15 +2627,6 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                                             stations[i].strings[string_i].antennas[antenna_i].time.push_back(last_trig_bin - (detector->params.TestBed_Ch_delay_bin[ch_loop] - detector->params.TestBed_BH_Mean_delay_bin + detector->stations[i].strings[string_i].antennas[antenna_i].manual_delay_bin) + waveformCenter - waveformLength / 2 + mimicbin);
                                             stations[i].strings[string_i].antennas[antenna_i].time_mimic.push_back((-(detector->params.TestBed_Ch_delay_bin[ch_loop] - detector->params.TestBed_BH_Mean_delay_bin + detector->stations[i].strings[string_i].antennas[antenna_i].manual_delay_bin) + waveformCenter - waveformLength / 2 + mimicbin) *settings1->TIMESTEP *1.e9 + detector->params.TestBed_WFtime_offset_ns);    // save in ns
                                         }
-                                        if (mimicbin == 0) {
-                                            for (int m = 0; m < stations[i].strings[string_i].antennas[antenna_i].ray_sol_cnt; m++) { ///< calculates time of center of each rays signal based on readout window time config
-                                                double signal_center_offset = (double)(stations[i].strings[string_i].antennas[antenna_i].SignalBin[m] - stations[i].strings[string_i].antennas[antenna_i].time[0]) * settings1->TIMESTEP * 1.e9;
-                                                double signal_center_time = signal_center_offset + stations[i].strings[string_i].antennas[antenna_i].time_mimic[0];
-                                                //! signal_center_offset: time offset between beginning of readout window and center of signal
-                                                //! signal_center_time: time of center of signal based on readout window time config
-                                                stations[i].strings[string_i].antennas[antenna_i].SignalBinTime.push_back(signal_center_time);
-                                            }
-                                        }
                                     }
 
                                     // set global_trig_bin values
@@ -2691,15 +2676,6 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                                             stations[i].strings[string_i].antennas[antenna_i].V_mimic.push_back((trigger->Full_window_V[ch_loop][last_trig_bin - (detector->params.TestBed_Ch_delay_bin[ch_loop] - detector->params.TestBed_BH_Mean_delay_bin + detector->stations[i].strings[string_i].antennas[antenna_i].manual_delay_bin) + waveformCenter - waveformLength / 2 + mimicbin]) *1.e3);    // save in mV
                                             stations[i].strings[string_i].antennas[antenna_i].time.push_back(last_trig_bin - (detector->params.TestBed_Ch_delay_bin[ch_loop] - detector->params.TestBed_BH_Mean_delay_bin + detector->stations[i].strings[string_i].antennas[antenna_i].manual_delay_bin) + waveformCenter - waveformLength / 2 + mimicbin);
                                             stations[i].strings[string_i].antennas[antenna_i].time_mimic.push_back((-(detector->params.TestBed_Ch_delay_bin[ch_loop] - detector->params.TestBed_BH_Mean_delay_bin + detector->stations[i].strings[string_i].antennas[antenna_i].manual_delay_bin) + waveformCenter - waveformLength / 2 + mimicbin) *settings1->TIMESTEP *1.e9 + detector->params.TestBed_WFtime_offset_ns);    // save in ns
-                                        }
-                                        if (mimicbin == 0) {
-                                            for (int m = 0; m < stations[i].strings[string_i].antennas[antenna_i].ray_sol_cnt; m++) { ///< calculates time of center of each rays signal based on readout window time config
-                                                double signal_center_offset = (double)(stations[i].strings[string_i].antennas[antenna_i].SignalBin[m] - stations[i].strings[string_i].antennas[antenna_i].time[0]) * settings1->TIMESTEP * 1.e9;
-                                                double signal_center_time = signal_center_offset + stations[i].strings[string_i].antennas[antenna_i].time_mimic[0];
-                                                //! signal_center_offset: time offset between beginning of readout window and center of signal
-                                                //! signal_center_time: time of center of signal based on readout window time config
-                                                stations[i].strings[string_i].antennas[antenna_i].SignalBinTime.push_back(signal_center_time);
-                                            }
                                         }
                                     }
 
@@ -2843,18 +2819,6 @@ void Report::rerun_event(Event *event, Detector *detector,
 
     for(int j=0; j<num_strings; j++){
         for(int k=0; k<num_antennas; k++){
-	   
-            // This (gain_ch_no) is used for per-channel gain implementation. 
-            // It is used in all instances of ApplyElect_Tdomain() and ApplyElect_Tdomain_FirstTwo(), to indicate channel number
-            // Note that channel numbering is different for DETECTOR==4 than for the rest (1-3). See that in the definition of GetChannelfromStringAntenna()  
-            int gain_ch_no;
-            if (settings->DETECTOR==4){
-                    gain_ch_no = detector->GetChannelfromStringAntenna (0, j, k, settings)-1;
-            }       
-            else{
-                    gain_ch_no = detector->GetChannelfromStringAntenna (0, j, k, settings);
-            }
-  
 
             int idx = ((j*4)+k);
 
@@ -2885,6 +2849,10 @@ void Report::rerun_event(Event *event, Detector *detector,
                     Position receive_vector;
                     Vector n_trg_pokey;
                     Vector n_trg_slappy;
+										Position S_launch_vector;
+                    Position S_receive_vector;
+										Vector nvec;
+
 
                     GetParameters(
                         event->Nu_Interaction[0].posnu,
@@ -2894,10 +2862,10 @@ void Report::rerun_event(Event *event, Detector *detector,
                         ray_output[2][ray_sol_cnt],
                         launch_vector, receive_vector,
                         n_trg_slappy, n_trg_pokey
-                        );
+                        , S_launch_vector, S_receive_vector, nvec);
                     // get polarization
                     Vector Pol_vector = GetPolarization(
-                        event->Nu_Interaction[0].nnu, launch_vector);
+                        event->Nu_Interaction[0].nnu, launch_vector, S_launch_vector);
 
                     double fresnel, mag;
                     icemodel->GetFresnel(
@@ -2907,15 +2875,17 @@ void Report::rerun_event(Event *event, Detector *detector,
                         event->Nu_Interaction[0].posnu,
                         launch_vector, receive_vector,
                         settings, fresnel, mag, Pol_vector
-                        );
+                        , S_launch_vector, S_receive_vector, nvec);
 
                     // get arrival angle at the antenna
                     double antenna_theta, antenna_phi;
+										double S_antenna_theta, S_antenna_phi;
+			// MACHTAY LOOK HERE 11/7/22
                     GetAngleAnt(
                         receive_vector, 
                         detector->stations[0].strings[j].antennas[k],
-                        antenna_theta, antenna_phi
-                        );
+                        antenna_theta, antenna_phi, S_receive_vector
+             				);
                     
                     // this is the 1/R and fresnel and focusing effect
                     double atten_factor = 1. / ray_output[0][ray_sol_cnt] * mag * fresnel;
@@ -3025,7 +2995,7 @@ void Report::rerun_event(Event *event, Detector *detector,
                                 settings, antenna_theta, antenna_phi
                                 );
                             ApplyElect_Tdomain(freq_tmp*1.e-6, detector,
-                                V_forfft[2*n], V_forfft[2*n + 1], gain_ch_no, settings
+                                V_forfft[2*n], V_forfft[2*n + 1], settings
                                 );
                         }
                         else{
@@ -3037,7 +3007,7 @@ void Report::rerun_event(Event *event, Detector *detector,
                                 );
                             ApplyElect_Tdomain_FirstTwo(freq_tmp*1.e-6,
                                 freq_lastbin*1.e-6, detector,
-                                V_forfft[2*n], V_forfft[2*n + 1], gain_ch_no
+                                V_forfft[2*n], V_forfft[2*n + 1]
                                 );
                         }
                     }
@@ -3757,16 +3727,7 @@ int Report::saveTriggeredEvent(Settings *settings1, Detector *detector, Event *e
            stations[i].strings[string_i].antennas[antenna_i].time_mimic.push_back( ( -(detector->params.TestBed_Ch_delay_bin[trig_j] - detector->params.TestBed_BH_Mean_delay_bin + detector->stations[i].strings[string_i].antennas[antenna_i].manual_delay_bin) - waveformLength/2 + waveformCenter + mimicbin) * settings1->TIMESTEP*1.e9 + detector->params.TestBed_WFtime_offset_ns );// save in ns
            	    
 	  }
-      if (mimicbin == 0) {
-        for (int m = 0; m < stations[i].strings[string_i].antennas[antenna_i].ray_sol_cnt; m++) { ///< calculates time of center of each rays signal based on readout window time config
-            double signal_center_offset = (double)(stations[i].strings[string_i].antennas[antenna_i].SignalBin[m] - stations[i].strings[string_i].antennas[antenna_i].time[0]) * settings1->TIMESTEP * 1.e9;
-            double signal_center_time = signal_center_offset + stations[i].strings[string_i].antennas[antenna_i].time_mimic[0];
-            //! signal_center_offset: time offset between beginning of readout window and center of signal
-            //! signal_center_time: time of center of signal based on readout window time config
-            stations[i].strings[string_i].antennas[antenna_i].SignalBinTime.push_back(signal_center_time);
-        }
-      }      
-  	
+        	
       }
       
             
@@ -4247,7 +4208,7 @@ int Report::GetChNumFromArbChID( Detector *detector, int ID, int StationIndex, S
 
 
 
-Vector Report::GetPolarization (Vector &nnu, Vector &launch_vector) {
+Vector Report::GetPolarization (Vector &nnu, Vector &launch_vector, Vector &S_launch_vector) {
     // copy from icemc GetPolarization
 
     // Want to find a unit vector in the same plane as
@@ -4256,6 +4217,7 @@ Vector Report::GetPolarization (Vector &nnu, Vector &launch_vector) {
     
     // cross nnu with launch_vector to get the direction of the B field.
     Vector n_bfield = nnu.Cross(launch_vector);
+    // To redo this with TVector3, we just need to 
     
     // cross b-field with nrf2_iceside to get the polarization vector.
     Vector n_pol = n_bfield.Cross(launch_vector);
@@ -4278,14 +4240,20 @@ Vector Report::GetPolarization (Vector &nnu, Vector &launch_vector) {
 } //GetPolarization
 
 
-void Report::GetParameters( Position &src, Position &trg, Vector &nnu, double &viewangle, double receive_angle, Vector &launch_vector, Vector &receive_vector, Vector &n_trg_slappy, Vector &n_trg_pokey) {
+void Report::GetParameters( Position &src, Position &trg, Vector &nnu, double &viewangle, double receive_angle, Vector &launch_vector, Vector &receive_vector, Vector &n_trg_slappy, Vector &n_trg_pokey, Vector &S_launch_vector, Vector &S_receive_vector, Vector &nvec) {
 
     viewangle = PI/2. - viewangle;  // viewangle was actually launch angle
 
+		// Set the launch vector direction and normalize
     launch_vector = (trg.Cross( trg.Cross(src) )).Rotate(viewangle, trg.Cross(src));
     launch_vector = launch_vector.Unit();
     viewangle = launch_vector.Angle(nnu);
-    
+		// Now let's use this for the S vector
+		Vector S_temp(nvec[0]*nvec[0]*launch_vector[0], nvec[1]*nvec[1]*launch_vector[1], nvec[2]*nvec[2]*launch_vector[2]);
+		S_launch_vector = S_temp;
+		S_launch_vector.Unit();
+		// check that S and k vectors    
+ 
      /*
       * BAC, AC, and JT 2020/11/3
       * 
@@ -4299,8 +4267,14 @@ void Report::GetParameters( Position &src, Position &trg, Vector &nnu, double &v
     
     //cout<<"launch_vector angle between R1 (trg) : "<<launch_vector.Angle(trg)<<"\n";
 
+    // Here's where receive vector is set
     receive_vector = trg.Rotate( receive_angle, src.Cross(trg) );
-    receive_vector = receive_vector.Unit();
+    receive_vector = receive_vector.Unit(); // MACHTAY LOOK HERE
+		Vector S_temp2(nvec[0]*nvec[0]*receive_vector[0], nvec[1]*nvec[1]*receive_vector[1], nvec[2]*nvec[2]*receive_vector[2]);
+		S_receive_vector = S_temp2;
+		S_receive_vector.Unit();
+	// We need to replace the instances where receive_vector uses a method of the Position class
+	// See here: https://root.cern.ch/doc/master/classTVector3.html
 
     n_trg_pokey = trg.Unit();
     n_trg_slappy = (trg.Cross(src)).Unit();
@@ -4462,7 +4436,7 @@ void Report::ApplyFilter_OutZero (double freq, Detector *detector, double &vmmhz
 }
 
 
-void Report::ApplyElect_Tdomain(double freq, Detector *detector, double &vm_real, double &vm_img, int gain_ch_no, Settings *settings1) {  // read elect chain gain (unitless), phase (rad) and apply to V/m
+void Report::ApplyElect_Tdomain(double freq, Detector *detector, double &vm_real, double &vm_img, Settings *settings1) {  // read elect chain gain (unitless), phase (rad) and apply to V/m
 
     if ( settings1->PHASE_SKIP_MODE == 0 ) {
 
@@ -4486,21 +4460,21 @@ void Report::ApplyElect_Tdomain(double freq, Detector *detector, double &vm_real
         }
 
         // V amplitude
-        double v_amp  = sqrt(vm_real*vm_real + vm_img*vm_img) * detector->GetElectGain_1D_OutZero( freq, gain_ch_no ); // apply gain (unitless) to amplitude
+        double v_amp  = sqrt(vm_real*vm_real + vm_img*vm_img) * detector->GetElectGain_1D_OutZero( freq ); // apply gain (unitless) to amplitude
 
         // real, img terms with phase shift
         //vm_real = v_amp * cos( phase_current + detector->GetElectPhase_1D(freq) );
         //vm_img = v_amp * sin( phase_current + detector->GetElectPhase_1D(freq) );
 
-        vm_real = v_amp * cos( phase_current - detector->GetElectPhase_1D(freq, gain_ch_no) );
-        vm_img = v_amp * sin( phase_current - detector->GetElectPhase_1D(freq, gain_ch_no ) );
+        vm_real = v_amp * cos( phase_current - detector->GetElectPhase_1D(freq) );
+        vm_img = v_amp * sin( phase_current - detector->GetElectPhase_1D(freq) );
     }
 
     else {
 
-        vm_real = vm_real * detector->GetElectGain_1D_OutZero( freq, gain_ch_no); // only amplitude
+        vm_real = vm_real * detector->GetElectGain_1D_OutZero( freq ); // only amplitude
 
-        vm_img = vm_img * detector->GetElectGain_1D_OutZero( freq, gain_ch_no); // only amplitude
+        vm_img = vm_img * detector->GetElectGain_1D_OutZero( freq ); // only amplitude
     }
 
 }
@@ -4508,10 +4482,10 @@ void Report::ApplyElect_Tdomain(double freq, Detector *detector, double &vm_real
 
 
 
-void Report::ApplyElect_Tdomain_FirstTwo(double freq0, double freq1, Detector *detector, double &vm_bin0, double &vm_bin1, int gain_ch_no) {  // read elect chain gain (unitless), phase (rad) and apply to V/m
+void Report::ApplyElect_Tdomain_FirstTwo(double freq0, double freq1, Detector *detector, double &vm_bin0, double &vm_bin1) {  // read elect chain gain (unitless), phase (rad) and apply to V/m
 
-    vm_bin0 = vm_bin0 * detector->GetElectGain_1D_OutZero( freq0 , gain_ch_no);
-    vm_bin1 = vm_bin1 * detector->GetElectGain_1D_OutZero( freq1 , gain_ch_no);
+    vm_bin0 = vm_bin0 * detector->GetElectGain_1D_OutZero( freq0 );
+    vm_bin1 = vm_bin1 * detector->GetElectGain_1D_OutZero( freq1 );
 
 }
 
@@ -4613,8 +4587,14 @@ void Report::ApplyNoiseFig_databin(int ch, int bin_n, Detector *detector, double
 
 
 
-
-void Report::GetAngleAnt(Vector &rec_vector, Position &antenna, double &ant_theta, double &ant_phi) {   //ant_theta and ant_phi is in degree 
+// MACHTAY LOOK HERE 11/7/22
+// This function is used for calculating the antenna response
+// Make rec_vector a TVector wherever it's used
+// This function should use an S-vector instead of a k-vector
+// Currently rec_vector is the receive_vector declared at the start of Connect_Interaction
+// 	which is a k-vector 
+// 
+void Report::GetAngleAnt(Vector &rec_vector, Position &antenna, double &ant_theta, double &ant_phi, Vector &S_rec_vector) {   //ant_theta and ant_phi is in degree 
 
     /*
      * 2020-12-07 BAC
@@ -4627,10 +4607,16 @@ void Report::GetAngleAnt(Vector &rec_vector, Position &antenna, double &ant_thet
      * calculate the polarization factors and the gain.
     */
 
+		// Original way
     Vector flip_receive_vector = -1. * rec_vector;
-    ant_theta = flip_receive_vector.Theta() * TMath::RadToDeg(); // return in degrees
+		ant_theta = flip_receive_vector.Theta() * TMath::RadToDeg(); // return in degrees
     ant_phi = flip_receive_vector.Phi() * TMath::RadToDeg();
+		// New way (using S instead of k)
+		Vector flip_S_receive_vector = -1 * S_rec_vector;
+		ant_theta = flip_S_receive_vector.Theta() * TMath::RadToDeg(); // return in degrees
+    ant_phi = flip_S_receive_vector.Phi() * TMath::RadToDeg();
 
+	// MACHTAY LOOK HERE
 }
 
 
