@@ -25,6 +25,7 @@
 #include "Spectra.h"
 #include "Tools.h"
 #include "Trigger.h"
+#include "Birefringence.hh"
 
 using namespace std;
 
@@ -132,6 +133,8 @@ int main(int argc, char **argv) {   // read setup.txt file
     // IceModel *icemodel=new IceModel(ICE_MODEL + NOFZ*10,CONSTANTICETHICKNESS * 1000 + CONSTANTCRUST * 100 + FIXEDELEVATION * 10 + 0,MOOREBAY);// creates Antarctica ice model
     IceModel *icemodel=new IceModel(settings1->ICE_MODEL + settings1->NOFZ*10,settings1->CONSTANTICETHICKNESS * 1000 + settings1->CONSTANTCRUST * 100 + settings1->FIXEDELEVATION * 10 + 0,settings1->MOOREBAY);// creates Antarctica ice model
     // IceModel inherits from EarthModel  
+
+    Birefringence *birefringence=new Birefringence();
 
     cout<<endl;
     cout<<"Surface at (log:0, lat:0) : "<<icemodel->Surface(0., 0.)<<endl;
@@ -497,7 +500,7 @@ int main(int argc, char **argv) {   // read setup.txt file
             //report->Connect_Interaction_Detector (event, detector, raysolver, signal, icemodel, settings1, trigger);
 
             //report->Connect_Interaction_Detector (event, detector, raysolver, signal, icemodel, settings1, trigger, theEvent);
-            report->Connect_Interaction_Detector_V2 (event, detector, raysolver, signal, icemodel, settings1, trigger, Events_Thrown);
+            report->Connect_Interaction_Detector_V2 (event, detector, raysolver, signal, icemodel, birefringence, settings1, trigger, Events_Thrown);
             //report->Connect_Interaction_Detector (event, detector, raysolver, signal, icemodel, settings1, trigger, theEvent, Events_Thrown);
 
             #ifdef ARA_UTIL_EXISTS
