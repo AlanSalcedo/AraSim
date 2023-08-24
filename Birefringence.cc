@@ -1,14 +1,27 @@
 //ADD LIBRARIES LATER?
+#include "TVector3.h" 
+#include <string>
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <stdio.h>
+#include <stdlib.h>
+
+using namespace std;
+
 #include "Birefringence.hh"
+
 
 Birefringence::Birefringence() {
 	//default constructor
 }
 
-Birefrimgence::~Birefringence() {
+Birefringence::~Birefringence() {
 	//default destructor?
 }
 
+
+/******
 double Birefringence::getV(vector<double> nvec) {
 
   double alpha=nvec[0];
@@ -396,7 +409,7 @@ double Birefringence::getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,do
   double Q=B/2.;
   double R=C;
   */
-
+/******
   double theta_initial=atan2( B , A - C )/2.; // not sure this is rotated in the right direction - check this.                                                     
 
   //  double lambda2=(1.*(M+R)+sqrt((M-R)*(M-R)+4*P*Q))/2.;
@@ -509,7 +522,7 @@ double Birefringence::getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,do
   double Enew=0.;
   double Fnew=-1.;
   */
-
+/**********
   double Mnew=Anew;
   double Pnew=Bnew/2.;
   double Qnew=Bnew/2.;
@@ -691,8 +704,23 @@ double Birefringence::getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,do
   return deltan;
   
 }
+
+*******/
+
 //start Maya's functions 
-void Birefringence::Read_Indicatrix_Par(ifstream n1file,ifstream n2file,ifstream n3file, string stemp, double thisn, double thisdepth, double firstn1, double firstn2, double firstn3, int NDEPTHS_NS ){ //reads in data from n1file, n2file, n3file inta a callable function
+void Birefringence::Read_Indicatrix_Par(string sn1file, string sn2file, string sn3file){ //reads in data from n1file, n2file, n3file inta a callable function
+
+int NDEPTHS_NS=81;
+double thisn;
+double thisdepth;
+string stemp;
+double firstn1;
+double firstn2;
+double firstn3;
+
+ifstream n1file(sn1file.c_str());
+ifstream n2file(sn2file.c_str());
+ifstream n3file(sn3file.c_str());
 
     n1file >> stemp;
     for (int i=0;i<NDEPTHS_NS;i++) {
@@ -749,7 +777,11 @@ void Birefringence::Read_Indicatrix_Par(ifstream n1file,ifstream n2file,ifstream
   } 
 
 // smoothing function
-double Birefringence::Smooth_Indicatrix_Par(vector<double>  n1vec,vector<double> n2vec,vector<double> n3vec,vector<double>tmp){ //wrap the smooth code with a function, input being n1vec,n2vec,n3vec
+void Birefringence::Smooth_Indicatrix_Par(){ //wrap the smooth code with a function, input being n1vec,n2vec,n3vec
+
+    vector<double> tmp;
+    tmp.clear();
+
     tmp.resize(n1vec.size());
     int NSMOOTH=5;
     int min=(int)(((double)NSMOOTH)/2.);
@@ -818,6 +850,9 @@ double Birefringence::Smooth_Indicatrix_Par(vector<double>  n1vec,vector<double>
 
  }//end smoothing function
 
+
+
+/***********
 double Birefringence::VAngle(vector<double> nvec_tmp,vector<double> vdepths_n1,vector<double> vdepths_n2,vector<double> vdepths_n3,int n) {
     
     nvec_tmp.resize(n);
@@ -947,3 +982,4 @@ double Birefringence::VAngle(vector<double> nvec_tmp,vector<double> vdepths_n1,v
 	}
     }
   }
+****************/
