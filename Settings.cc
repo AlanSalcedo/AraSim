@@ -69,6 +69,9 @@ outputdir="outputs"; // directory where outputs go
   // INPUT FILE AGAIN?  SOMETHING ELSE?
   //These were moved here from IceModel under the new compilation scheme
   ICE_MODEL=0; //Select ice model to be used.  0 = Crust 2.0 , 1 = BEDMAP.
+  BIREFRINGENCE=0; // To activate birefringence. Default 0 means no birefringence
+  
+  BIAXIAL=1; // Biaxial Birefringence? 1 = biaxial, 0 = uniaxial
   NOFZ=1; // 1=depth dependent index of refraction,0=off
   CONSTANTCRUST=0; // set crust density and thickness to constant values.
   CONSTANTICETHICKNESS=0; // set ice thickness to constant value
@@ -333,6 +336,12 @@ void Settings::ReadFile(string setupfile) {
               else if (label == "ICE_MODEL") {
                   ICE_MODEL = atof( line.substr(line.find_first_of("=") + 1).c_str() );
               }
+	      else if (label == "BIREFRINGENCE"){
+		  BIREFRINGENCE = atof( line.substr(line.find_first_of("=") + 1).c_str() );	
+	      }
+	      else if (label == "BIAXIAL"){
+		  BIAXIAL = atof( line.substr(line.find_first_of("=") + 1).c_str() );	
+	      }
               else if (label == "NOFZ") {
                   NOFZ = atof( line.substr(line.find_first_of("=") + 1).c_str() );
               }

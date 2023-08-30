@@ -1,5 +1,9 @@
 //ADD LIBRARIES LATER?
-#include "TVector3.h" 
+
+#include "Settings.h"
+
+#include "TVector3.h"
+#include "TGraph.h" 
 #include <string>
 #include <vector>
 #include <iostream>
@@ -12,8 +16,15 @@ using namespace std;
 #include "Birefringence.hh"
 
 
-Birefringence::Birefringence() {
-	//default constructor
+Birefringence::Birefringence(Settings *settings1) {
+
+	//HAVING FILES READ HERE MAY NOT BE VERY ELEGANT
+	string sn1file="./data/birefringence/n1.txt";
+	string sn2file="./data/birefringence/n2.txt";
+	string sn3file="./data/birefringence/n3.txt";
+	
+	Read_Indicatrix_Par(sn1file, sn2file, sn3file, settings1); //loading n1, n2, n3 and depths into nvec1, nvec2, nvec3, vdepths_n1, vdepths_n2, vdepths_n3 	
+	Smooth_Indicatrix_Par(); //smoothing nvec1, nvec2, nvec3 ?? What does smoothing mean here?
 }
 
 Birefringence::~Birefringence() {
@@ -708,7 +719,9 @@ double Birefringence::getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,do
 *******/
 
 //start Maya's functions 
-void Birefringence::Read_Indicatrix_Par(string sn1file, string sn2file, string sn3file){ //reads in data from n1file, n2file, n3file inta a callable function
+void Birefringence::Read_Indicatrix_Par(string sn1file, string sn2file, string sn3file, Settings *settings1){ //reads in data from n1file, n2file, n3file inta a callable function
+
+int BIAXIAL = settings1->BIAXIAL;
 
 int NDEPTHS_NS=81;
 double thisn;
@@ -842,7 +855,7 @@ void Birefringence::Smooth_Indicatrix_Par(){ //wrap the smooth code with a funct
     n3vec=tmp;
 
 
-    cout << "sizes are " << n1vec.size() << "\t" << n2vec.size() << "\t" << n3vec.size() << "\n";
+    cout << "Smooth sizes are " << n1vec.size() << "\t" << n2vec.size() << "\t" << n3vec.size() << "\n";
     cout << "n's are \n";
     for (int i=0;i<n1vec.size();i++) {
       cout << "Smooth n1, n2, n3 are " << n1vec[i] << "\t" << n2vec[i] << "\t" << n3vec[i] << "\n";
@@ -850,7 +863,109 @@ void Birefringence::Smooth_Indicatrix_Par(){ //wrap the smooth code with a funct
 
  }//end smoothing function
 
+double Birefringence::Time_Diff_TwoRays(vector <double> &res, vector <double> &zs, Settings *settings1){
+	
+	int stationID = settings1->DETECTOR_STATION;
+	
+	vector<double> nvec_thisstep;
+        nvec_thisstep.resize(3);
 
+	TGraph *gn1=new TGraph(n1vec.size(),&vdepths_n1[0],&n1vec[0]);
+ 	TGraph *gn2=new TGraph(n2vec.size(),&vdepths_n2[0],&n2vec[0]);
+ 	TGraph *gn3=new TGraph(n3vec.size(),&vdepths_n3[0],&n3vec[0]);
+	
+	TVector3 rhat_thisstep;
+	TVector3 p_e1;
+	TVector3 p_e2;
+		
+	//Need to define yhat
+	
+	double station_coords[5][2]={ //Can I get them from AraSim?
+		{38754., 51051.}, // in feet
+		{35481., 45369.},
+    		{32200., 51053.},
+    		{35478., 56737.},
+    		{32356., 39746.}, // from Kaeli
+	}
+	
+	for (int i=0;i<5;i++) { //Convert to meters
+    		for (int j=0;j<2;j++) {
+      			station_coords[i][j]=station_coords[i][j]*MFT;
+    		}
+  	}
+	
+	double pulser_coords[2]={42358.94,48974.2} //Need to be replaced with event position!!!!
+
+	for (int j=0;j<2;j++) { //Convert to meters
+    		pulser_coords[j]=pulser_coords[j]*MFT;
+  	}	
+
+	//Finally define yhat
+	
+	TVector3 yhat(station_coords[stationID][0]-pulser_coords[0],
+                      station_coords[stationID][1]-pulser_coords[1],
+                      0.); // yhat points from pulser to station	
+	if (yhat.Mag()<HOWSMALLISTOOSMALL){
+        	cout << "yhat mag is " << yhat.Mag() << "\n";
+        }
+
+	yhat.SetMag(1.);
+	
+	double deltantimeslength_alongpath=0.;
+	
+	for (int istep=0;istep<res.size();istep++) {
+		
+		nvec_thisstep.resize(3);
+
+         	nvec_thisstep[0]=gn1->Eval(zs[istep]);
+        	nvec_thisstep[1]=gn2->Eval(zs[istep]);
+        	nvec_thisstep[2]=gn3->Eval(zs[istep]);
+
+		if (istep==0){
+			
+			rhat_thisstep[0]=-1.*(res[istep]-res[istep-1])*yhat[0];
+                        rhat_thisstep[1]=-1.*(res[istep]-res[istep-1])*yhat[1];
+                        rhat_thisstep[2]=-1.*(zs[istep]-zs[istep-1]);	
+
+			double temp_deltan=getDeltaN(settings1->BIAXIAL,nvec_thisstep,rhat_thisstep,angle_iceflow,n_e1,n_e2,p_e1_start,p_e2_start);
+		}
+
+		if (istep>0) {
+
+       			rhat_thisstep[0]=-1.*(res[istep]-res[istep-1])*yhat[0];
+           		rhat_thisstep[1]=-1.*(res[istep]-res[istep-1])*yhat[1];
+           		rhat_thisstep[2]=-1.*(zs[istep]-zs[istep-1]);
+		
+			double length=rhat_thisstep.Mag();
+
+           		if (rhat_thisstep.Mag()<HOWSMALLISTOOSMALL)
+             		cout << "rhat_thisstep mag is " << rhat_thisstep.Mag() << "\n";
+
+           		rhat_thisstep.SetMag(1.);
+
+			if (rhat_thisstep.Mag()<1.E-8){
+              			cout << "before calling getDeltaN at place 2, rhat_thisstep is " << rhat_thisstep[0] << "\t" << rhat_thisstep[1] << "\t" << rhat_thisstep[2] << "\n";
+			}
+		
+			//turn getDeltaN on!
+			double deltan_alongpath=getDeltaN(settings1->BIAXIAL,nvec_thisstep,rhat_thisstep,angle_iceflow,n_e1,n_e2,p_e1,p_e2);		
+            		cout << "deltan_alongpath 1 is " << deltan_alongpath << "\n";
+			
+			if (p_e2.Mag()<HOWSMALLISTOOSMALL){
+              			cout << "2, p_e2 is " << p_e2.Mag() << "\n";
+			}
+
+			deltantimeslength_alongpath+=deltan_alongpath*length //IGNORED notflipped!!!
+	
+		} //end if(istep>0)
+
+	} //end for for(int istep...) loop
+
+	double vtimediff = deltantimeslength_alongpath/CLIGHT*1.E9; //time difference in nanoseconds
+	
+	return vtimediff;
+
+} // end time difference calculation
 
 /***********
 double Birefringence::VAngle(vector<double> nvec_tmp,vector<double> vdepths_n1,vector<double> vdepths_n2,vector<double> vdepths_n3,int n) {

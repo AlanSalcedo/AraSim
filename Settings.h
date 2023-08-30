@@ -38,6 +38,8 @@ class Settings
   // INPUT FILE AGAIN?  SOMETHING ELSE?
   //These were moved here from IceModel under the new compilation scheme
         int ICE_MODEL; //Select ice model to be used.  0 = Crust 2.0 , 1 = BEDMAP.
+	int BIREFRINGENCE; //To activate birefringence
+	int BIAXIAL;
         int NOFZ; // 1=depth dependent index of refraction,0=off
         int CONSTANTCRUST; // set crust density and thickness to constant values.
         int CONSTANTICETHICKNESS; // set ice thickness to constant value

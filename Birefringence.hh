@@ -14,7 +14,7 @@ class Birefringence {
 
      public:
 
-	Birefringence();
+	Birefringence(Settings *settings1);
 
 
 
@@ -51,12 +51,21 @@ double getV(vector<double> &nvec);
 	vector<double> vdepths_n2;
 	vector<double> vdepths_n3;
 
-	int BIAXIAL=1; //PLACEHOLDER!!!
+	TVector3 p_e1_start;
+    	TVector3 p_e2_start;
+
 	int CONSTANTINDICATRIX=0; ///PLACEHOLDER!!!
+	const double CLIGHT=3.E8;
+	const double HOWSMALLISTOOSMALL=1.e-8;
+	const double PI=3.1415926;
+	const double DEGRAD=180./PI;
+	const double angle_iceflow=(36.+ (46./60.) + (23./3600.) + 90.)/DEGRAD;
+	const double MFT=1./100.*2.54/1.*12.; // (something in ft.)*1m/100cm*2.54cm/1in*12in
 
-	void Read_Indicatrix_Par(string sn1file,string sn2file,string sn3file); //reads in files and gets depth vectors
-
+	void Read_Indicatrix_Par(string sn1file,string sn2file,string sn3file, Settings *settings1 ); //reads in files and gets depth vectors
 	void Smooth_Indicatrix_Par();//smooths vectors 1,2,3
+	double Time_Diff_TwoRays(vector <double> &res, vector <double> &zs, Settings *settings1);
+
 /**
 double VAngle(vector<double> &nvec_tmp,vector<double> &vdepths_n1,vector<double> &vdepths_n2,vector<double> &vdepths_n3,int n)//finds the angles between the three vectors
 

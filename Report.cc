@@ -309,10 +309,11 @@ void Report::clear_useless(Settings *settings1) {   // to reduce the size of out
 void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, RaySolver *raysolver, Signal *signal, IceModel *icemodel, Birefringence *birefringence, Settings *settings1, Trigger *trigger, int evt)
 {
 
-//TESTING BIREFIRNGENCE CLASS AND READER FUNCTION
-string sn1file="./data/birefringence/n1.txt";
-string sn2file="./data/birefringence/n2.txt";
-string sn3file="./data/birefringence/n3.txt";
+//TESTING BIREFIRNGENCE CLASS AND READER FUNCTIONS
+
+//string sn1file="./data/birefringence/n1.txt";
+//string sn2file="./data/birefringence/n2.txt";
+//string sn3file="./data/birefringence/n3.txt";
 
 //double thisn;
 //double thisdepth;
@@ -321,8 +322,9 @@ string sn3file="./data/birefringence/n3.txt";
 //double firstn2;
 //double firstn3;
 
-birefringence->Read_Indicatrix_Par(sn1file, sn2file, sn3file);
-birefringence->Smooth_Indicatrix_Par();
+//birefringence->Read_Indicatrix_Par(sn1file, sn2file, sn3file);
+//birefringence->Smooth_Indicatrix_Par();
+
 //FINISH TESTING
 
     int ray_sol_cnt;
