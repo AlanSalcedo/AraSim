@@ -321,6 +321,7 @@ TVector3 Birefringence::rotateD(TVector3 epsilon, double angle_iceflow, TVector3
     
     
 }
+**/
 
 double Birefringence::getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,double angle_iceflow, double &n_e1, double &n_e2,TVector3 &p_e1,TVector3 &p_e2) {                   
                                                                                                                                                                    
@@ -420,7 +421,7 @@ double Birefringence::getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,do
   double Q=B/2.;
   double R=C;
   */
-/******
+
   double theta_initial=atan2( B , A - C )/2.; // not sure this is rotated in the right direction - check this.                                                     
 
   //  double lambda2=(1.*(M+R)+sqrt((M-R)*(M-R)+4*P*Q))/2.;
@@ -533,7 +534,7 @@ double Birefringence::getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,do
   double Enew=0.;
   double Fnew=-1.;
   */
-/**********
+
   double Mnew=Anew;
   double Pnew=Bnew/2.;
   double Qnew=Bnew/2.;
@@ -716,8 +717,6 @@ double Birefringence::getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,do
   
 }
 
-*******/
-
 //start Maya's functions 
 void Birefringence::Read_Indicatrix_Par(string sn1file, string sn2file, string sn3file, Settings *settings1){ //reads in data from n1file, n2file, n3file inta a callable function
 
@@ -877,7 +876,10 @@ double Birefringence::Time_Diff_TwoRays(vector <double> &res, vector <double> &z
 	TVector3 rhat_thisstep;
 	TVector3 p_e1;
 	TVector3 p_e2;
-		
+
+	double n_e1;
+	double n_e2;	
+	
 	//Need to define yhat
 	
 	double station_coords[5][2]={ //Can I get them from AraSim?
@@ -886,7 +888,7 @@ double Birefringence::Time_Diff_TwoRays(vector <double> &res, vector <double> &z
     		{32200., 51053.},
     		{35478., 56737.},
     		{32356., 39746.}, // from Kaeli
-	}
+	};
 	
 	for (int i=0;i<5;i++) { //Convert to meters
     		for (int j=0;j<2;j++) {
@@ -894,7 +896,7 @@ double Birefringence::Time_Diff_TwoRays(vector <double> &res, vector <double> &z
     		}
   	}
 	
-	double pulser_coords[2]={42358.94,48974.2} //Need to be replaced with event position!!!!
+	double pulser_coords[2]={42358.94,48974.2}; //Need to be replaced with event position!!!!
 
 	for (int j=0;j<2;j++) { //Convert to meters
     		pulser_coords[j]=pulser_coords[j]*MFT;
@@ -955,7 +957,7 @@ double Birefringence::Time_Diff_TwoRays(vector <double> &res, vector <double> &z
               			cout << "2, p_e2 is " << p_e2.Mag() << "\n";
 			}
 
-			deltantimeslength_alongpath+=deltan_alongpath*length //IGNORED notflipped!!!
+			deltantimeslength_alongpath+=deltan_alongpath*length; //IGNORED notflipped!!!
 	
 		} //end if(istep>0)
 

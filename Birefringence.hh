@@ -65,6 +65,7 @@ double getV(vector<double> &nvec);
 	void Read_Indicatrix_Par(string sn1file,string sn2file,string sn3file, Settings *settings1 ); //reads in files and gets depth vectors
 	void Smooth_Indicatrix_Par();//smooths vectors 1,2,3
 	double Time_Diff_TwoRays(vector <double> &res, vector <double> &zs, Settings *settings1);
+	double getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,double angle_iceflow, double &n_e1, double &n_e2,TVector3 &p_e1,TVector3 &p_e2);
 
 /**
 double VAngle(vector<double> &nvec_tmp,vector<double> &vdepths_n1,vector<double> &vdepths_n2,vector<double> &vdepths_n3,int n)//finds the angles between the three vectors
