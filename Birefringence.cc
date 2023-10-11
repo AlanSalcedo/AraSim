@@ -904,8 +904,8 @@ double Birefringence::Time_Diff_TwoRays(vector <double> &res, vector <double> &z
 
 	//Finally define yhat
 	
-	TVector3 yhat(station_coords[stationID][0]-pulser_coords[0],
-                      station_coords[stationID][1]-pulser_coords[1],
+	TVector3 yhat(station_coords[stationID-1][0]-pulser_coords[0],
+                      station_coords[stationID-1][1]-pulser_coords[1],
                       0.); // yhat points from pulser to station	
 	if (yhat.Mag()<HOWSMALLISTOOSMALL){
         	cout << "yhat mag is " << yhat.Mag() << "\n";
@@ -923,14 +923,14 @@ double Birefringence::Time_Diff_TwoRays(vector <double> &res, vector <double> &z
         	nvec_thisstep[1]=gn2->Eval(zs[istep]);
         	nvec_thisstep[2]=gn3->Eval(zs[istep]);
 
-		if (istep==0){
+//		if (istep==0){
 			
-			rhat_thisstep[0]=-1.*(res[istep]-res[istep-1])*yhat[0];
-                        rhat_thisstep[1]=-1.*(res[istep]-res[istep-1])*yhat[1];
-                        rhat_thisstep[2]=-1.*(zs[istep]-zs[istep-1]);	
+//			rhat_thisstep[0]=-1.*(res[istep]-res[istep-1])*yhat[0];
+//                        rhat_thisstep[1]=-1.*(res[istep]-res[istep-1])*yhat[1];
+//                        rhat_thisstep[2]=-1.*(zs[istep]-zs[istep-1]);	
 
-			double temp_deltan=getDeltaN(settings1->BIAXIAL,nvec_thisstep,rhat_thisstep,angle_iceflow,n_e1,n_e2,p_e1_start,p_e2_start);
-		}
+//			double temp_deltan=getDeltaN(settings1->BIAXIAL,nvec_thisstep,rhat_thisstep,angle_iceflow,n_e1,n_e2,p_e1_start,p_e2_start);
+//		}
 
 		if (istep>0) {
 
