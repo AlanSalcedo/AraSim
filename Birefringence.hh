@@ -1,4 +1,5 @@
 #include "TVector3.h"
+#include "Vector.h"
 #include <string>
 #include <vector>
 #include <iostream>
@@ -51,8 +52,11 @@ double getV(vector<double> &nvec);
 	vector<double> vdepths_n2;
 	vector<double> vdepths_n3;
 
-	TVector3 p_e1_start;
-    	TVector3 p_e2_start;
+	TVector3 p_e1;
+    	TVector3 p_e2;
+
+	TVector3 p_e1_src;
+	TVector3 p_e2_src;
 
 	int CONSTANTINDICATRIX=0; ///PLACEHOLDER!!!
 	const double CLIGHT=3.E8;
@@ -67,6 +71,15 @@ double getV(vector<double> &nvec);
 	double Time_Diff_TwoRays(vector <double> &res, vector <double> &zs, Settings *settings1);
 	double getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,double angle_iceflow, double &n_e1, double &n_e2,TVector3 &p_e1,TVector3 &p_e2);
 
+	TVector3 Get_p_e1();
+	TVector3 Get_p_e2();
+
+	double Power_split_factor(Vector Pol_vector, int bire_ray_cnt, Settings *settings1);
+	void Principal_axes_polarization(Vector &Pol_vector, int bire_ray_cnt, int max_bire_ray_cnt, Settings *settings1);
+	void Time_shift_and_power_split(double *V_forfft, int size, int T_shift, Vector Pol_vector, int bire_ray_cnt, int max_bire_ray_cnt, Settings *settings1);
+	void Store_V_forfft_for_interference(double *V_forfft, double *V_forfft_bire, int size, int bire_ray_cnt);
+	void Two_rays_interference(double *V_forfft, double *V_forfft_bire_1, double *V_forfft_bire_2, int size, int max_bire_ray_cnt, Settings *settings1);
+	int Reflected_ray_remove_bire(double refl_angle);
 /**
 double VAngle(vector<double> &nvec_tmp,vector<double> &vdepths_n1,vector<double> &vdepths_n2,vector<double> &vdepths_n3,int n)//finds the angles between the three vectors
 

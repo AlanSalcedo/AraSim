@@ -4,6 +4,7 @@
 
 #include "TVector3.h"
 #include "TGraph.h" 
+#include "Vector.h"
 #include <string>
 #include <vector>
 #include <iostream>
@@ -18,310 +19,20 @@ using namespace std;
 
 Birefringence::Birefringence(Settings *settings1) {
 
-	//HAVING FILES READ HERE MAY NOT BE VERY ELEGANT
+	//Reading values for principal axes and their asociated depths 
 	string sn1file="./data/birefringence/n1.txt";
 	string sn2file="./data/birefringence/n2.txt";
 	string sn3file="./data/birefringence/n3.txt";
-	
-	Read_Indicatrix_Par(sn1file, sn2file, sn3file, settings1); //loading n1, n2, n3 and depths into nvec1, nvec2, nvec3, vdepths_n1, vdepths_n2, vdepths_n3 	
-	Smooth_Indicatrix_Par(); //smoothing nvec1, nvec2, nvec3 ?? What does smoothing mean here?
+
+	Read_Indicatrix_Par(sn1file, sn2file, sn3file, settings1); //loading n1, n2, n3 and depths into nvec1, nvec2, nvec3, vdepths_n1, vdepths_n2, vdepths_n3
+ 	
+	Smooth_Indicatrix_Par(); //smoothing nvec1, nvec2, nvec3. What does smoothing do?
 }
 
 Birefringence::~Birefringence() {
-	//default destructor?
+	//default destructor
 }
 
-
-/******
-double Birefringence::getV(vector<double> nvec) {
-
-  double alpha=nvec[0];
-  double beta=nvec[1];
-  double gamma=nvec[2];
-
-  //  return 90.-acos(sqrt((gamma*gamma)*(beta*beta-alpha*alpha)/((beta*beta)*(gamma*gamma-alpha*alpha)  )))*DEGRAD;
-  return 90.-acos(((gamma*gamma)*(beta*beta-alpha*alpha)/((beta*beta)*(gamma*gamma-alpha*alpha)  )))*DEGRAD;
-
-}
-void Birefringence::thetastoEpsilons(double thetaE_e1_Sclock,double thetaE_e2_Sclock,
-		      double &epsilon1,double &epsilon2) {
-
-  epsilon1=thetaE_e1_Sclock-PI/2.;
-  epsilon2=thetaE_e2_Sclock;
-
-}
-void Birefringence::getAnglesontheClock(TVector3 rhat_thisstep1, TVector3 rhat_thisstep2,
-                         TVector3 p_e1, TVector3 p_e2,
-                         double &theta_e1,double &theta_e2,
-                         double &p_e1_thetacomponent,double &p_e2_thetacomponent,
-                         double &p_e1_phicomponent,double &p_e2_phicomponent) {
-
-  double theta_I_1=rhat_thisstep1.Theta();
-  double theta_I_2=rhat_thisstep2.Theta();
-
-  TVector3 zaxis(0.,0.,1.);
-  TVector3 yaxis(0.,1.,0.);
-  // rhat_thisstep is the direction of khat.                                                                                        
-  // rotate khat to be pointing in the +z direction,                                                                                
-  // and rotate p_e1 and p_e2 along with them.                                                                                      
-  double phi1=-1.*rhat_thisstep1.Phi();
-  rhat_thisstep1.Rotate(phi1,zaxis);
-  p_e1.Rotate(phi1,zaxis);
-
-  double phi2=-1.*rhat_thisstep2.Phi();
-  rhat_thisstep2.Rotate(phi2,zaxis);
-  p_e2.Rotate(phi2,zaxis);
-
-  double theta1=-1.*rhat_thisstep1.Theta();
-  rhat_thisstep1.Rotate(theta1,yaxis);
-  p_e1.Rotate(theta1,yaxis);
-
-  double theta2=-1.*rhat_thisstep2.Theta();
-  rhat_thisstep2.Rotate(theta2,yaxis);
-  p_e2.Rotate(theta2,yaxis);
-
-  // now find the angles on the clock that p_e1 and p_e2 sit at.                                                                    
-  theta_e1=p_e1.Phi();
-  theta_e2=p_e2.Phi();
-
-  double epsilon1=0.;
-  double epsilon2=0.;
-  thetastoEpsilons(theta_e1,theta_e2,
-                   epsilon1,epsilon2);
-
-
-  double scalefactor=0.2/(sin(theta_I_1)+sin(theta_I_2))*2.;
-
-  p_e1_thetacomponent=scalefactor*sin(theta_I_1)*cos(epsilon1)*cos(epsilon1);
-  p_e2_thetacomponent=scalefactor*sin(theta_I_2)*sin(epsilon2)*sin(epsilon2);
-
-  p_e1_phicomponent=scalefactor*sin(theta_I_1)*sin(epsilon1)*cos(epsilon1);
-  p_e2_phicomponent=scalefactor*sin(theta_I_2)*-1.*cos(epsilon2)*sin(epsilon2);
-
-}
-
-void Birefringence::getManyAnglesontheClock(int BIAXIAL,double crosspolangle_tx,
-                             TVector3 rhat_thisstep,
-                             TVector3 p_e1,TVector3 p_e2,
-                             TVector3 E_e1,TVector3 E_e2,
-                             double &theta_e1,double &theta_e2,
-                             double &thetaE_e1,double &thetaE_e2,
-                             double &theta_e1_Sclock,double &theta_e2_Sclock,
-                             double &thetaE_e1_Sclock,double &thetaE_e2_Sclock,
-                             TVector3 &Shat_e1,TVector3 &Shat_e2,
-                             double &E_e1_thetacomponent_Sclock,double &E_e2_thetacomponent_Sclock,
-                             double &E_e1_phicomponent_Sclock,double &E_e2_phicomponent_Sclock) {
-
-  // these aren't currently used for anything but they are the theta and phi components of D-hat for each ray, on the clock where k is in the page                                                                                                                     
-   double p_e1_thetacomponent=0.;
-   double p_e2_thetacomponent=0.;
-   double p_e1_phicomponent=0.;
-   double p_e2_phicomponent=0.;
-   getAnglesontheClock(rhat_thisstep,rhat_thisstep, // we are using the same k vector for both rays                                  
-		       p_e1,p_e2,
-		       theta_e1,theta_e2,
-		       p_e1_thetacomponent,p_e2_thetacomponent,
-		       p_e1_phicomponent,p_e2_phicomponent);
-   
-   if (theta_e1<0.)
-     theta_e1+=PI;
-   if (theta_e2<-1.*PI/2.)
-     theta_e2+=PI;
-   if (theta_e2>PI/2.)
-     theta_e2-=PI;
-   
-   
-   theta_e1+=crosspolangle_tx;
-   theta_e2+=crosspolangle_tx;
-   
-   // these aren't currently used for anything but they are the theta and phi components of the E field for each ray, on the clock where k is in the page                                                                                                               
-   double E_e1_thetacomponent=0.;
-   double E_e2_thetacomponent=0.;
-   double E_e1_phicomponent=0.;
-   double E_e2_phicomponent=0.;
-   
-   getAnglesontheClock(rhat_thisstep,rhat_thisstep,
-		       E_e1,E_e2,
-		       thetaE_e1,thetaE_e2,
-		       E_e1_thetacomponent,E_e2_thetacomponent,
-		       E_e1_phicomponent,E_e2_phicomponent);
-   
-   if (thetaE_e1<0.)
-     thetaE_e1+=PI;
-   if (thetaE_e2<-1.*PI/2.)
-     thetaE_e2+=PI;
-   if (thetaE_e2>PI/2.)
-     thetaE_e2-=PI;
-   
-   thetaE_e1+=crosspolangle_tx;
-   thetaE_e2+=crosspolangle_tx;
-   
-   // 09/05/21 for uniaxial, problem is that p and E are parallel I think.                                                           
-   TVector3 Hhat_e1;
-   TVector3 Hhat_e2;
-   
-   // for an isotropic medium, I think Hhat_e1 keeps getting flipped                                                                
-   // back and forth                                                                                                                 
-   // this part makes sure it stays oriented the say way relative to                                                                 
-   // each eigenvector and the direction of the ray.                                                                                 
-   if (BIAXIAL==-1) {
-
-     Hhat_e1=rhat_thisstep.Cross(p_e1);
-     Hhat_e2=rhat_thisstep.Cross(p_e2);
-     
-     if (Hhat_e1.Mag()<HOWSMALLISTOOSMALL)
-       cout << "Hhat_e1 is " << Hhat_e1.Mag() << "\n";
-     
-     Hhat_e1.SetMag(1);
-     
-     if (Hhat_e2.Mag()<HOWSMALLISTOOSMALL) {
-       cout << "Shat_e2 is " << Shat_e2.Mag() << "\n";
-       cout << "p_e2 is " << p_e2.Mag() << "\n";
-       cout << "Hhat_e2 is " << Hhat_e2.Mag() << "\n";
-     }
-     Hhat_e2.SetMag(1);
-     
-     Shat_e1=E_e1.Cross(Hhat_e1);
-     Shat_e2=E_e2.Cross(Hhat_e2);
-     
-     Shat_e1.SetMag(1.);
-     Shat_e2.SetMag(1.);
-   }
-   else if (BIAXIAL==0) {
-     
-     Hhat_e1=rhat_thisstep.Cross(p_e1);
-     Hhat_e2=rhat_thisstep.Cross(E_e2);
-     
-     Hhat_e1.SetMag(1.);
-     Hhat_e2.SetMag(1.);
-     Shat_e1=E_e1.Cross(Hhat_e1);
-     Shat_e2=E_e2.Cross(Hhat_e2);
-     
-     Shat_e1.SetMag(1.);
-     Shat_e2.SetMag(1.);
-     
-     
-   }
-   else {
-     
-     Hhat_e1=rhat_thisstep.Cross(p_e1);
-     Hhat_e2=rhat_thisstep.Cross(p_e2);
-     
-     
-     if (Hhat_e1.Mag()<HOWSMALLISTOOSMALL) {
-       cout << "E_e1 is " << E_e1[0] << "\t" << E_e1[1] << "\t" << E_e1[2] << "\n";
-       cout << "p_e1 is " << p_e1[0] << "\t" << p_e1[1] << "\t" << p_e1[2] << "\n";
-       cout << "Hhat_e1 is " << Hhat_e1.Mag() << "\n";
-     }
-     
-     
-     Hhat_e1.SetMag(1.);
-     Hhat_e2.SetMag(1.);
-     Shat_e1=E_e1.Cross(Hhat_e1);
-     Shat_e2=E_e2.Cross(Hhat_e2);
-     
-     Shat_e1.SetMag(1.);
-     Shat_e2.SetMag(1.);
-     
-   }
-   
-
-   // here i want to plot where p_e1 and p_2 are on the clock, with 12 o'clock being the in the plane of rhat at launch and the z axis.                                                                                                                                 
-   // these aren't currently used for anything but they are the theta and phi components of the D-hat eigenvector for each ray, on the clock where S is in the page                                                                                                     
-   double p_e1_thetacomponent_Sclock=0.;
-   double p_e2_thetacomponent_Sclock=0.;
-   double p_e1_phicomponent_Sclock=0.;
-   double p_e2_phicomponent_Sclock=0.;
-   
-   getAnglesontheClock(Shat_e1,Shat_e2,
-		       p_e1,p_e2,
-		       theta_e1_Sclock,theta_e2_Sclock,
-		       p_e1_thetacomponent_Sclock,p_e2_thetacomponent_Sclock,
-		       p_e1_phicomponent_Sclock,p_e2_phicomponent_Sclock);
-   
-
-   if (theta_e1_Sclock<0.)
-     theta_e1_Sclock+=PI;
-   if (theta_e2_Sclock<-1.*PI/2.)
-     theta_e2_Sclock+=PI;
-   if (theta_e2_Sclock>PI/2.)
-     theta_e2_Sclock-=PI;
-   
-
-   
-   theta_e1_Sclock+=crosspolangle_tx;
-   theta_e2_Sclock+=crosspolangle_tx;
-   
-   getAnglesontheClock(Shat_e1,Shat_e2,
-		       E_e1,E_e2,
-		       thetaE_e1_Sclock,thetaE_e2_Sclock,
-		       E_e1_thetacomponent_Sclock,E_e2_thetacomponent_Sclock,
-		       E_e1_phicomponent_Sclock,E_e2_phicomponent_Sclock);
-   
-   if (thetaE_e1_Sclock<0.)
-     thetaE_e1_Sclock+=PI;
-   if (thetaE_e2_Sclock<-1.*PI/2.)
-     thetaE_e2_Sclock+=PI;
-   if (thetaE_e2_Sclock>PI/2.)
-     thetaE_e2_Sclock-=PI;
-   
-   thetaE_e1_Sclock+=crosspolangle_tx;
-   thetaE_e2_Sclock+=crosspolangle_tx;
-   
-   
-}
-
-
-
-
-TVector3 Birefringence::rotateD(TVector3 epsilon, double angle_iceflow, TVector3 D) {
-  
-  double rotate_toxalongiceflow[3][3]={{cos(angle_iceflow) , 1.*sin(angle_iceflow),0. },
-                                       {-1.*sin(angle_iceflow), cos(angle_iceflow),0.},
-                                       {0.,0.,1.}};
-  
-  
-  TVector3 tempvec;
-  for (int i=0;i<3;i++) {
-    double sum=0.;
-    for (int j=0;j<3;j++) {
-      sum+=rotate_toxalongiceflow[i][j]*D[j];
-    }
-    tempvec[i]=sum;
-  }
-  D=tempvec;
-  
-  TVector3 inverseepsilon(1./epsilon[0],1./epsilon[1],1./epsilon[2]);
-
-  for (int i=0;i<3;i++) {
-    tempvec[i]=inverseepsilon[i]*D[i];
-  }
-  D=tempvec;
-  
-  double rotate_backtonormal[3][3];
-  
-  for (int i=0;i<3;i++) {
-    for (int j=0;j<3;j++) {
-      rotate_backtonormal[i][j]=rotate_toxalongiceflow[j][i];
-    }
-  }
-  for (int i=0;i<3;i++) {
-    double sum=0.;
-    
-    for (int j=0;j<3;j++) {
-      sum+=rotate_backtonormal[i][j]*D[j];
-    }
-    
-    tempvec[i]=sum;
-  }
-  
-  D=tempvec;
-  
-    return D; // this is actually returning an electric field                                                                         
-    
-    
-}
-**/
 
 double Birefringence::getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,double angle_iceflow, double &n_e1, double &n_e2,TVector3 &p_e1,TVector3 &p_e2) {                   
                                                                                                                                                                    
@@ -681,7 +392,10 @@ double Birefringence::getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,do
   // somewhat randomly.                                                                                                                                            
   // this is why when an isotropic medium is chosen, I pick the n1                                                                                                 
   // principal axis to be very slightly longer than the other two.                                                                                                 
-  // here is make sure that the 2st eigenvector is the one at 12 o'clock                                                                                           
+  // here is make sure that the 2st eigenvector is the one at 12 o'clock 
+
+//POSSIBLE IMPROVEMENT: I don't think we want the isotropic case in AraSim. Just turn off birefringence for a better isotropic treatment. I will make BIAXIAL==-1 an inconsitency in the Settings.cc.
+                                                                                          
   if (BIAXIAL==-1) {
     TVector3 temp1=myz.Cross(rhat);
     TVector3 twelveoclock=rhat.Cross(temp1);
@@ -717,12 +431,12 @@ double Birefringence::getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,do
   
 }
 
-//start Maya's functions 
 void Birefringence::Read_Indicatrix_Par(string sn1file, string sn2file, string sn3file, Settings *settings1){ //reads in data from n1file, n2file, n3file inta a callable function
 
 int BIAXIAL = settings1->BIAXIAL;
 
-int NDEPTHS_NS=81;
+int NDEPTHS_NS=81; //POSSIBLE IMPROVEMENT: This is not agnostic to the number of rows (depths) in sn1file. May want to determine this by counting the number of lines. 
+
 double thisn;
 double thisdepth;
 string stemp;
@@ -874,8 +588,6 @@ double Birefringence::Time_Diff_TwoRays(vector <double> &res, vector <double> &z
  	TGraph *gn3=new TGraph(n3vec.size(),&vdepths_n3[0],&n3vec[0]);
 	
 	TVector3 rhat_thisstep;
-	TVector3 p_e1;
-	TVector3 p_e2;
 
 	double n_e1;
 	double n_e2;	
@@ -912,11 +624,14 @@ double Birefringence::Time_Diff_TwoRays(vector <double> &res, vector <double> &z
         }
 
 	yhat.SetMag(1.);
+//	cout << "testing yhat is: " <<yhat[0] << ", " << yhat[1] << endl; 
 	
 	double deltantimeslength_alongpath=0.;
 	
 	for (int istep=0;istep<res.size();istep++) {
-		
+cout << "step: " << istep << endl;
+//cout << "res: " << res[istep] << endl; 
+cout << "zs: " << zs[istep] << endl;	
 		nvec_thisstep.resize(3);
 
          	nvec_thisstep[0]=gn1->Eval(zs[istep]);
@@ -928,18 +643,21 @@ double Birefringence::Time_Diff_TwoRays(vector <double> &res, vector <double> &z
 //			rhat_thisstep[0]=-1.*(res[istep]-res[istep-1])*yhat[0];
 //                        rhat_thisstep[1]=-1.*(res[istep]-res[istep-1])*yhat[1];
 //                        rhat_thisstep[2]=-1.*(zs[istep]-zs[istep-1]);	
-
+//			cout << "testing rhat_thisstep is: " <<rhat_thisstep[0] << ", " << rhat_thisstep[1] << "," << rhat_thisstep[2] << endl;
 //			double temp_deltan=getDeltaN(settings1->BIAXIAL,nvec_thisstep,rhat_thisstep,angle_iceflow,n_e1,n_e2,p_e1_start,p_e2_start);
 //		}
 
 		if (istep>0) {
 
-       			rhat_thisstep[0]=-1.*(res[istep]-res[istep-1])*yhat[0];
-           		rhat_thisstep[1]=-1.*(res[istep]-res[istep-1])*yhat[1];
-           		rhat_thisstep[2]=-1.*(zs[istep]-zs[istep-1]);
-		
-			double length=rhat_thisstep.Mag();
+			//The next three lines differ from Amy's code by "-1.*" because she uses Uzair's ray tracer that gives points on the ray going down from target to source
+       			rhat_thisstep[0]=(res[istep]-res[istep-1])*yhat[0];
+           		rhat_thisstep[1]=(res[istep]-res[istep-1])*yhat[1];
+           		rhat_thisstep[2]=(zs[istep]-zs[istep-1]);
+//			cout << "testing rhat_thisstep is: " <<rhat_thisstep[0] << ", " << rhat_thisstep[1] << "," << rhat_thisstep[2] << endl;		
+//			cout << "testing yhat is: " <<yhat[0] << ", " << yhat[1] << "," << yhat[2] << endl;
 
+			double length=rhat_thisstep.Mag();
+//cout << "length: " << length << endl;
            		if (rhat_thisstep.Mag()<HOWSMALLISTOOSMALL)
              		cout << "rhat_thisstep mag is " << rhat_thisstep.Mag() << "\n";
 
@@ -949,8 +667,13 @@ double Birefringence::Time_Diff_TwoRays(vector <double> &res, vector <double> &z
               			cout << "before calling getDeltaN at place 2, rhat_thisstep is " << rhat_thisstep[0] << "\t" << rhat_thisstep[1] << "\t" << rhat_thisstep[2] << "\n";
 			}
 		
-			//turn getDeltaN on!
-			double deltan_alongpath=getDeltaN(settings1->BIAXIAL,nvec_thisstep,rhat_thisstep,angle_iceflow,n_e1,n_e2,p_e1,p_e2);		
+			double deltan_alongpath=getDeltaN(settings1->BIAXIAL,nvec_thisstep,rhat_thisstep,angle_iceflow,n_e1,n_e2,p_e1,p_e2);
+		
+			if (istep==1) {
+				p_e1_src = p_e1.Unit();
+				p_e2_src = p_e2.Unit();				
+			}	
+	
             		cout << "deltan_alongpath 1 is " << deltan_alongpath << "\n";
 			
 			if (p_e2.Mag()<HOWSMALLISTOOSMALL){
@@ -969,134 +692,116 @@ double Birefringence::Time_Diff_TwoRays(vector <double> &res, vector <double> &z
 
 } // end time difference calculation
 
-/***********
-double Birefringence::VAngle(vector<double> nvec_tmp,vector<double> vdepths_n1,vector<double> vdepths_n2,vector<double> vdepths_n3,int n) {
-    
-    nvec_tmp.resize(n);
+TVector3 Birefringence::Get_p_e1(){ 
 
-    for (int i=0;i<n1vec.size();i++) {
-    nvec_tmp[0]=gn1->Eval(vdepths_n1[i]);
-    nvec_tmp[1]=gn2->Eval(vdepths_n2[i]);
-    nvec_tmp[2]=gn3->Eval(vdepths_n3[i]);
-    vV.push_back(getV(nvec_tmp));
-    }
-  } //end func
+return p_e1; 
 
-/
+}
 
-   
-   
-    TGraph *gvoltage_r2[6];
-    TGraph *gfield_r1[6];
-    TGraph *gfield_r2[6];
-    TGraph *genvelope_minus_r1[6];
-    TGraph *genvelope_minus_r2[6];
-    TGraph *genvelope_plus_r1[6];
-    TGraph *genvelope_plus_r2[6];
-    TGraph *gvenvelope_minus_r1[6];
-    TGraph *gvenvelope_minus_r2[6];
-    TGraph *gvenvelope_plus_r1[6];
-    TGraph *gvenvelope_plus_r2[6];
-    TGraph *gEenvelope_minus_r1[6];
-    TGraph *gEenvelope_minus_r2[6];
-    TGraph *gEenvelope_plus_r1[6];
-    TGraph *gEenvelope_plus_r2[6];
+TVector3 Birefringence::Get_p_e2(){ 
 
+return p_e2; 
 
-  void Birefringence::ReadDepthFiles(ifstream myfile,ifstream Dave5afile,int this_station, int this_day,int this_pol, double this_depth, double this_snrmax){ //take myfile and dave's data and read in values
-    if (myfile.is_open())
-      {
-	for (int i=0;i<NSHOTS;i++) {
-	  //cout << "i'm here. \n";
-	  // this_depth is a negative number
-	  myfile >> this_station >> this_day >> this_pol >> this_depth >> this_snrmax;
-	  this_snrmax=this_snrmax*sqrt((this_depth-station_depths[this_station-1])*(this_depth-station_depths[this_station-1])+horizontal_distances[this_station-1]*horizontal_distances[this_station-1])/sqrt((-1000.-station_depths[0])*(-1000.-station_depths[0])+horizontal_distances[0]*horizontal_distances[0]); // correct for 1/r
-	//if (this_station==1)
-	//	if (i>640)
-	//	cout << "station, this_pol, depth, snrmax are " << this_station << "\t" << this_pol << "\t" << this_depth << "\t" << this_snrmax << "\n";
-	//	this_snrmax=this_snrmax*exp(sqrt((this_depth-station_depths[this_station-1])*(this_depth-station_depths[this_station-1])+horizontal_distances[this_station-1]*horizontal_distances[this_station-1])/L_ATTEN);
-	//cout << "this_depth is " << this_depth << "\n";
+}
+
+double Birefringence::Power_split_factor(Vector Pol_vector, int bire_ray_cnt, Settings *settings1){
+
+    int BIREFRINGENCE = settings1->BIREFRINGENCE;
+
+    double split_factor = 0;
+
+    if (BIREFRINGENCE==1){
+ 
+	TVector3 Pol_Vec;
+
+	for(int i=0; i<3; i++){
+		Pol_Vec[i] = Pol_vector[i];
+	} 
+
+//cout << "bire_ray_cnt: " << bire_ray_cnt << endl;
+
+Pol_Vec = Pol_Vec.Unit();
+Pol_vector = Pol_vector.Unit();
+//p_e1_src = p_e1_src.Unit();
+//p_e2_src = p_e2_src.Unit();
+
+//cout << "Pol_vector: " << Pol_vector[0] << ", " << Pol_vector[1] << ", " << Pol_vector[2] << endl;
+//cout << "Pol_Vec: " << Pol_Vec[0] << ", " << Pol_Vec[1] << ", " << Pol_Vec[2] << endl;
+//cout << "p_e1_src: " << p_e1_src[0] << ", " << p_e1_src[1] << ", " << p_e1_src[2] << endl;
+//cout << "p_e2_src: " << p_e2_src[0] << ", " << p_e2_src[1] << ", " << p_e2_src[2] << endl;
+
+//cout << "split_factor default inside birefringence class: " << split_factor << endl;
 	
-	  if (this_snrmax>0. && !(this_station==5 && this_pol==0)) {
-	    vdepth_data[this_station-1].push_back(this_depth);
-	    //videpth[this_station-1].push_back((double)(vdepth_data[this_station-1].size()-1));
-	    vsnrmax[this_station-1].push_back(this_snrmax);
-	    vtotal_distances[this_station-1].push_back(sqrt((this_depth-station_depths[this_station-1])*(this_depth-station_depths[this_station-1])+horizontal_distances[this_station-1]*horizontal_distances[this_station-1]));
-
-	    if (i>2) {
-	      running_mean=0.;
-	      running_rms=0.;
-	      for (int j=0;j<3;j++) {
-		running_mean+=vsnrmax[this_station-1][vsnrmax[this_station-1].size()-j-1];
-	      }
-	      running_mean=running_mean/3.;
-	 
-	      for (int j=0;j<3;j++) {
-		running_rms+=(vsnrmax[this_station-1][vsnrmax[this_station-1].size()-j-1]-running_mean)*(vsnrmax[this_station-1][vsnrmax[this_station-1].size()-j-1]-running_mean);
-	      }
-	      running_rms=sqrt(running_rms/2.);
-	  
-	    }
-	    vsnrmax_err[this_station-1].push_back(running_rms);
-	    vdepth_data_err[this_station-1].push_back(0.);
-	    vtotal_distances_err[this_station-1].push_back(0.);
-	  } // if this_snrmax>0.
+	if (bire_ray_cnt == 0 ){
+		split_factor = abs( Pol_Vec.Dot(p_e1_src) ); 
 	}
-      
-	myfile.close();
-      
-      }
-    NSHOTS=33;
-
-    if (WHICHPOL==0) {
-      if (davea5file.is_open())
-	{
-	  cout << "i'm reading dave's a5 file.\n";
-	  for (int i=0;i<NSHOTS;i++) {
-	    //cout << "i'm here. \n";
-	    int this_station, this_day, this_pol;
-	    double this_depth, this_snrmax;
-	    string stemp;
-	    int this_channel;
-	    this_station=5; // station 5
-	  
-	  
-	    davea5file >> stemp >> this_channel >> this_depth >> this_snrmax;
-	  //if (this_station==1)
-	  //if (i>640)
-	  //	  cout << "station, depth, snrmax are " << this_station << "\t" << this_depth << "\t" << this_snrmax << "\n";
-	  //this_snrmax=this_snrmax*exp(sqrt((this_depth-station_depths[this_station-1])*(this_depth-station_depths[this_station-1])+horizontal_distances[this_station-1]*horizontal_distances[this_station-1])/L_ATTEN);
-	  //cout << "this_depth is " << this_depth << "\n";
-	  
-	    if (this_snrmax>0.) {
-	      vdepth_data[this_station-1].push_back(this_depth);
-	    //videpth[this_station-1].push_back((double)(vdepth_data[this_station-1].size()-1));
-	      vsnrmax[this_station-1].push_back(this_snrmax);
-	      vtotal_distances[this_station-1].push_back(sqrt((this_depth-station_depths[this_station-1])*(this_depth-station_depths[this_station-1])+horizontal_distances[this_station-1]*horizontal_distances[this_station-1]));
-	    
-	      if (i>2) {
-		running_mean=0.;
-		running_rms=0.;
-		for (int j=0;j<3;j++) {
-		  running_mean+=vsnrmax[this_station-1][vsnrmax[this_station-1].size()-j-1];
-		}
-		running_mean=running_mean/3.;
-	      
-		for (int j=0;j<3;j++) {
-		  running_rms+=(vsnrmax[this_station-1][vsnrmax[this_station-1].size()-j-1]-running_mean)*(vsnrmax[this_station-1][vsnrmax[this_station-1].size()-j-1]-running_mean);
-		}
-		running_rms=sqrt(running_rms/2.);
-	      
-	      }
-	      vsnrmax_err[this_station-1].push_back(running_rms);
-	      vdepth_data_err[this_station-1].push_back(0.);
-	      vtotal_distances_err[this_station-1].push_back(0.);
-	    } // if this_snrmax>0.
-	  }
-	
-	  davea5file.close();
-	
+	else if (bire_ray_cnt == 1 ){
+		split_factor = abs( Pol_Vec.Dot(p_e2_src) );
 	}
-    }
-  }
-****************/
+
+//cout << "split_factor after calculation: " << split_factor << endl;
+
+     }
+//     else if (BIREFRINGENCE==0 || max_bire_ray_cnt == 1){
+//	split_factor = 1;
+//     }
+
+return split_factor;
+
+}
+
+void Birefringence::Principal_axes_polarization(Vector &Pol_vector, int bire_ray_cnt, int max_bire_ray_cnt, Settings *settings1){
+
+     int BIREFRINGENCE = settings1->BIREFRINGENCE;
+
+     if(BIREFRINGENCE==1 && max_bire_ray_cnt == 2){
+	if (bire_ray_cnt == 0){
+		Pol_vector = Vector(p_e1[0], p_e1[1], p_e1[2]); 
+	}
+	else if(bire_ray_cnt == 1){
+		Pol_vector = Vector(p_e2[0], p_e2[1], p_e2[2]);
+	}
+     }
+}
+
+void Birefringence::Time_shift_and_power_split(double *V_forfft, int size, int T_shift, Vector Pol_vector, int bire_ray_cnt, int max_bire_ray_cnt, Settings *settings1){
+
+     int BIREFRINGENCE = settings1->BIREFRINGENCE;
+     
+     if(BIREFRINGENCE==1 && max_bire_ray_cnt ==2){
+	  for (int n = 0; n < size; n++){
+		if (bire_ray_cnt == 0){
+			V_forfft[n] *= Power_split_factor(Pol_vector, bire_ray_cnt, settings1);
+                }
+                else if (bire_ray_cnt == 1){
+                	V_forfft[n] = V_forfft[n - T_shift] * Power_split_factor(Pol_vector, bire_ray_cnt, settings1);
+                }
+         }
+     }
+}
+
+void Birefringence::Store_V_forfft_for_interference(double *V_forfft, double *V_forfft_bire, int size, int bire_ray_cnt){
+	
+	for (int n = 0; n < size ;n++){
+		V_forfft_bire[n] = V_forfft[n];
+	}
+
+}
+
+void Birefringence::Two_rays_interference(double *V_forfft, double *V_forfft_bire_1, double *V_forfft_bire_2, int size, int max_bire_ray_cnt, Settings *settings1){
+
+     int BIREFRINGENCE = settings1->BIREFRINGENCE;
+     
+     if(BIREFRINGENCE==1 && max_bire_ray_cnt == 2){	
+	for ( int n = 0; n < size; n++ ){
+		V_forfft[n] = V_forfft_bire_1[n] + V_forfft_bire_2[n];
+	}
+     }
+}
+
+int Birefringence::Reflected_ray_remove_bire(double refl_angle){
+
+	if (refl_angle < PI/2.) {   // the ray is reflected at the surface
+		return 1;
+	}
+}
