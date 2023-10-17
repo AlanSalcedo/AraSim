@@ -34,7 +34,7 @@ Birefringence::~Birefringence() {
 }
 
 
-double Birefringence::getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,double angle_iceflow, double &n_e1, double &n_e2,TVector3 &p_e1,TVector3 &p_e2) {                   
+double Birefringence::getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,double angle_iceflow, double n_e1, double n_e2,TVector3 &p_e1,TVector3 &p_e2) {                   
                                                                                                                                                                    
   int FLIPPED=0;                                                                                                                                                   
   
@@ -576,10 +576,12 @@ void Birefringence::Smooth_Indicatrix_Par(){ //wrap the smooth code with a funct
 
  }//end smoothing function
 
-double Birefringence::Time_Diff_TwoRays(vector <double> &res, vector <double> &zs, Settings *settings1){
+double Birefringence::Time_Diff_TwoRays(vector <double> res, vector <double> zs, double refl_angle, Settings *settings1){
 	
-	int stationID = settings1->DETECTOR_STATION;
-	
+     int stationID = settings1->DETECTOR_STATION;
+     int BIREFRINGENCE = settings1->BIREFRINGENCE;
+
+     if (BIREFRINGENCE==1 && refl_angle >= PI/2.0 ){	
 	vector<double> nvec_thisstep;
         nvec_thisstep.resize(3);
 
@@ -689,6 +691,10 @@ cout << "zs: " << zs[istep] << endl;
 	double vtimediff = deltantimeslength_alongpath/CLIGHT*1.E9; //time difference in nanoseconds
 	
 	return vtimediff;
+     }
+     else{
+	return 0.;	
+     }
 
 } // end time difference calculation
 
