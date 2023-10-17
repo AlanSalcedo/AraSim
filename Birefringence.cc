@@ -1,6 +1,7 @@
 //ADD LIBRARIES LATER?
 
 #include "Settings.h"
+#include "Detector.h"
 
 #include "TVector3.h"
 #include "TGraph.h" 
@@ -17,14 +18,14 @@ using namespace std;
 #include "Birefringence.hh"
 
 
-Birefringence::Birefringence(Settings *settings1) {
+Birefringence::Birefringence(Detector *detector, Settings *settings1) {
 
 	//Reading values for principal axes and their asociated depths 
 	string sn1file="./data/birefringence/n1.txt";
 	string sn2file="./data/birefringence/n2.txt";
 	string sn3file="./data/birefringence/n3.txt";
 
-	Read_Indicatrix_Par(sn1file, sn2file, sn3file, settings1); //loading n1, n2, n3 and depths into nvec1, nvec2, nvec3, vdepths_n1, vdepths_n2, vdepths_n3
+	Read_Indicatrix_Par(sn1file, sn2file, sn3file, detector, settings1); //loading n1, n2, n3 and depths into nvec1, nvec2, nvec3, vdepths_n1, vdepths_n2, vdepths_n3
  	
 	Smooth_Indicatrix_Par(); //smoothing nvec1, nvec2, nvec3. What does smoothing do?
 }
@@ -431,7 +432,24 @@ double Birefringence::getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,do
   
 }
 
-void Birefringence::Read_Indicatrix_Par(string sn1file, string sn2file, string sn3file, Settings *settings1){ //reads in data from n1file, n2file, n3file inta a callable function
+void Birefringence::Read_Indicatrix_Par(string sn1file, string sn2file, string sn3file, Detector *detector, Settings *settings1){ //reads in data from n1file, n2file, n3file inta a callable function
+
+//Get offset between the ice surface and ARA station's x-y plane
+
+double detector_origin_depth=0;
+int number_of_antennas=0;
+
+//	for (int j = 0; j < detector->stations[0].strings.size(); j++) {
+//		for (int k = 0; k < detector->stations[0].strings[j].antennas.size(); k++) {
+//			cout << "Z total: " << detector_origin_depth << endl;
+//			detector_origin_depth += detector->stations[0].strings[j].antennas[k].GetZ();	
+//			number_of_antennas++;
+//		}
+//	}
+
+detector_origin_depth = detector->detector_depth;
+
+cout << "Detector depth" << detector_origin_depth << endl;
 
 int BIAXIAL = settings1->BIAXIAL;
 
@@ -451,13 +469,13 @@ ifstream n3file(sn3file.c_str());
     n1file >> stemp;
     for (int i=0;i<NDEPTHS_NS;i++) {
       n1file >> thisdepth >> thisn;
-      vdepths_n1.push_back(-1.*thisdepth); 
+      vdepths_n1.push_back(-1.*thisdepth - detector_origin_depth); 
       n1vec.push_back(thisn);
      }
     n2file >> stemp;
     for (int i=0;i<NDEPTHS_NS;i++) {//loops through this data
       n2file >> thisdepth >> thisn;//piping into thisn
-      vdepths_n2.push_back(-1.*thisdepth);
+      vdepths_n2.push_back(-1.*thisdepth - detector_origin_depth);
       if (BIAXIAL==1)//
 	n2vec.push_back(thisn);//adds our data into thisn for certain properties
       else if (BIAXIAL==0 || BIAXIAL==-1)
@@ -467,7 +485,7 @@ ifstream n3file(sn3file.c_str());
     n3file >> stemp; //n3file data into our stemp file!
     for (int i=0;i<NDEPTHS_NS;i++) {//same loop as for n1 and n2
       n3file >> thisdepth >> thisn;//from here below, same stuff as the last one for different biaxial values
-      vdepths_n3.push_back(-1.*thisdepth);
+      vdepths_n3.push_back(-1.*thisdepth - detector_origin_depth);
       if (BIAXIAL==0 || BIAXIAL==1)
 	n3vec.push_back(thisn);
       else if (BIAXIAL==-1)
@@ -499,6 +517,7 @@ ifstream n3file(sn3file.c_str());
     cout << "n's are \n";
     for (int i=0;i<NDEPTHS_NS;i++) {
       cout << "n1, n2, n3 are " << n1vec[i] << "\t" << n2vec[i] << "\t" << n3vec[i] << "\n";
+      cout << "Depths: " << vdepths_n1[i] << "\t " << vdepths_n2[i] << "\t" << vdepths_n3[i] << "\n";
     }
   } 
 
@@ -572,14 +591,17 @@ void Birefringence::Smooth_Indicatrix_Par(){ //wrap the smooth code with a funct
     cout << "n's are \n";
     for (int i=0;i<n1vec.size();i++) {
       cout << "Smooth n1, n2, n3 are " << n1vec[i] << "\t" << n2vec[i] << "\t" << n3vec[i] << "\n";
+      cout << "Depths: " << vdepths_n1[i] << "\t " << vdepths_n2[i] << "\t" << vdepths_n3[i] << "\n";
     }
 
  }//end smoothing function
 
 double Birefringence::Time_Diff_TwoRays(vector <double> res, vector <double> zs, double refl_angle, Settings *settings1){
 	
+
      int stationID = settings1->DETECTOR_STATION;
      int BIREFRINGENCE = settings1->BIREFRINGENCE;
+
 
      if (BIREFRINGENCE==1 && refl_angle >= PI/2.0 ){	
 	vector<double> nvec_thisstep;

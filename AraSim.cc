@@ -134,7 +134,6 @@ int main(int argc, char **argv) {   // read setup.txt file
     IceModel *icemodel=new IceModel(settings1->ICE_MODEL + settings1->NOFZ*10,settings1->CONSTANTICETHICKNESS * 1000 + settings1->CONSTANTCRUST * 100 + settings1->FIXEDELEVATION * 10 + 0,settings1->MOOREBAY);// creates Antarctica ice model
     // IceModel inherits from EarthModel  
 
-    Birefringence *birefringence=new Birefringence(settings1);
 
     cout<<endl;
     cout<<"Surface at (log:0, lat:0) : "<<icemodel->Surface(0., 0.)<<endl;
@@ -145,6 +144,8 @@ int main(int argc, char **argv) {   // read setup.txt file
     cout<<"end calling detector"<<endl;
     // Detector *detector=new Detector(settings1->DETECTOR); // builds antenna array, 0 for testbed
 
+    Birefringence *birefringence=new Birefringence(detector, settings1);
+   
     Trigger *trigger=new Trigger(detector, settings1); // builds the trigger  
     // Efficiencies *efficiencies=new Efficiencies(detector->getnRx(),outputdir); // keeps track of efficiencies at each stage of the simulation
     Efficiencies *efficiencies=new Efficiencies(100,outputdir); // keeps track of efficiencies at each stage of the simulation

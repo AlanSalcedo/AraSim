@@ -1646,7 +1646,9 @@ Detector::Detector(Settings * settings1, IceModel * icesurface, string setupfile
         params.number_of_antennas = 0;
 
         cout << "DETECTOR=4 imported station geom info" << endl;
-
+	
+	double detector_center[3]; 
+	
         for (int j = 0; j < stations[0].strings.size(); j++) {
             for (int k = 0; k < stations[0].strings[j].antennas.size(); k++) {
 
@@ -1660,9 +1662,12 @@ Detector::Detector(Settings * settings1, IceModel * icesurface, string setupfile
                     GetChannelfromStringAntenna(stationID, j, k, settings1) <<
                     endl;
 
+		    detector_depth+=stations[0].strings[j].antennas[k].GetZ();
                 params.number_of_antennas++;
             }
         }
+
+	detector_depth=detector_depth/params.number_of_antennas;
 
         cout << "after FlattoEarth, station0 location" << endl;
         for (int j = 0; j < stations[0].strings.size(); j++) {

@@ -341,6 +341,8 @@ class Detector {
         vector <ARA_station> stations;
         vector <Antenna_string> strings;
 
+	double detector_depth;
+
 	int NoiseFig_numCh;
 
         vector <double> freq_forfft;

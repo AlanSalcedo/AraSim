@@ -16,7 +16,7 @@ class Birefringence {
      public:
 	
 	//Constructor
-	Birefringence(Settings *settings1);
+	Birefringence(Detector *detector, Settings *settings1);
 
 	//Variables
 	vector<double> n1vec;
@@ -41,7 +41,7 @@ class Birefringence {
 	const double MFT=1./100.*2.54/1.*12.; // (something in ft.)*1m/100cm*2.54cm/1in*12in
 
 	//Functions
-	void Read_Indicatrix_Par(string sn1file,string sn2file,string sn3file, Settings *settings1 ); //reads in files and gets depth vectors
+	void Read_Indicatrix_Par(string sn1file,string sn2file,string sn3file, Detector *detector, Settings *settings1 ); //reads in files and gets depth vectors
 	void Smooth_Indicatrix_Par();//smooths vectors 1,2,3
 	double Time_Diff_TwoRays(vector <double> res, vector <double> zs, double refl_angle, Settings *settings1);
 	double getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,double angle_iceflow, double n_e1, double n_e2,TVector3 &p_e1,TVector3 &p_e2);
