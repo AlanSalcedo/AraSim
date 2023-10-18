@@ -658,8 +658,6 @@ double Birefringence::Time_Diff_TwoRays(vector <double> res, vector <double> zs,
 	
 	double deltantimeslength_alongpath=0.;
 
-	int switched_polarizations = 0;
-	
 	for (int istep=0;istep<res.size();istep++) {
 cout << "step: " << istep << endl;
 //cout << "res: " << res[istep] << endl; 
@@ -801,17 +799,17 @@ void Birefringence::Principal_axes_polarization(Vector &Pol_vector, int bire_ray
      }
 }
 
-void Birefringence::Time_shift_and_power_split(double *V_forfft, int size, int T_shift, Vector Pol_vector, int bire_ray_cnt, int max_bire_ray_cnt, Settings *settings1){
+void Birefringence::Time_shift_and_power_split(double *V_forfft, int size, int T_shift, double split_factor, int bire_ray_cnt, int max_bire_ray_cnt, Settings *settings1){
 
      int BIREFRINGENCE = settings1->BIREFRINGENCE;
      
      if(BIREFRINGENCE==1 && max_bire_ray_cnt ==2){
 	  for (int n = 0; n < size; n++){
 		if (bire_ray_cnt == 0){
-			V_forfft[n] *= Power_split_factor(Pol_vector, bire_ray_cnt, settings1);
+			V_forfft[n] *= split_factor;
                 }
                 else if (bire_ray_cnt == 1){
-                	V_forfft[n] = V_forfft[n - T_shift] * Power_split_factor(Pol_vector, bire_ray_cnt, settings1);
+                	V_forfft[n] = V_forfft[n - T_shift] * split_factor;
                 }
          }
      }

@@ -540,6 +540,8 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
 
                                 // calculate the polarization vector at the source
                                 Pol_vector = GetPolarization(event->Nu_Interaction[0].nnu, launch_vector);
+//MADE CHANGES HERE:
+				Vector Pol_vector_src = Pol_vector;
 
                                 icemodel->GetFresnel(ray_output[1][ray_sol_cnt],    // launch_angle                                    ray_output[2][ray_sol_cnt], // rec_angle
                                     ray_output[2][ray_sol_cnt], // rec_angle
@@ -870,6 +872,21 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                                                 stations[i].strings[j].antennas[k].PeakV.push_back(FindPeak(Earray, outbin));
 
                                                 // this forward fft volts_forfft is now in unit of V at each freq we can just apply each bin's gain factor to each freq bins
+
+//CHANGES HERE! 
+						int max_bire_ray_cnt = settings1->BIREFRINGENCE + 1;
+                                                double V_forfft_bire[max_bire_ray_cnt][stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]];
+
+						for ( int bire_ray_cnt = 0; bire_ray_cnt < max_bire_ray_cnt; bire_ray_cnt++ ){
+
+                                                max_bire_ray_cnt = birefringence->Reflected_ray_remove_bire(ray_output[3][ray_sol_cnt]);
+
+						int T_shift_bire = int(time_diff_birefringence/dT_forfft);
+
+						double split_factor_bire = birefringence->Power_split_factor(Pol_vector_src, bire_ray_cnt, settings1);				
+
+						birefringence->Time_shift_and_power_split(V_forfft, stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt], T_shift_bire, split_factor_bire, bire_ray_cnt, max_bire_ray_cnt, settings1);
+						
                                                 // without any phase consideration,
                                                 // apply same factor to both real, img parts
 
@@ -882,6 +899,10 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
 
                                                 freq_lastbin = freq_tmp;
 
+//CHANGED HERE!
+	
+						birefringence->Principal_axes_polarization(Pol_vector, bire_ray_cnt, max_bire_ray_cnt, settings1);
+				
                                                 /*
                                                 // Get ant gain with 2-D interpolation (may have bug?) 
                                                  */
@@ -1013,6 +1034,12 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
 
                                                 // now get time domain waveform back by inv fft
                                                 Tools::realft(V_forfft, -1, stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]);
+
+						birefringence->Store_V_forfft_for_interference(V_forfft, V_forfft_bire[bire_ray_cnt], stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt], bire_ray_cnt);
+
+                                            	} // END MY BIREFRINGENCE LOOP
+
+						birefringence->Two_rays_interference(V_forfft, V_forfft_bire[0], V_forfft_bire[1], stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt], max_bire_ray_cnt, settings1);
 
                                                 // do linear interpolation
                                                 // changed to sinc interpolation Dec 2020 by BAC
@@ -1484,7 +1511,9 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
 //						}
 //					    }				
 
-					    birefringence->Time_shift_and_power_split(V_forfft, stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt], T_shift_bire, Pol_vector, bire_ray_cnt, max_bire_ray_cnt, settings1);	
+					    double split_factor_bire = birefringence->Power_split_factor(Pol_vector, bire_ray_cnt, settings1);
+					
+					    birefringence->Time_shift_and_power_split(V_forfft, stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt], T_shift_bire, split_factor_bire, bire_ray_cnt, max_bire_ray_cnt, settings1);	
 					    
 cout << "Flag 2" << endl;
 //cout << "split_factor: " << split_factor << endl; 
