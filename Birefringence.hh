@@ -1,5 +1,6 @@
 #include "TVector3.h"
 #include "Vector.h"
+#include "Position.h"
 #include <string>
 #include <vector>
 #include <iostream>
@@ -37,13 +38,13 @@ class Birefringence {
 	const double HOWSMALLISTOOSMALL=1.e-8;
 	const double PI=3.1415926;
 	const double DEGRAD=180./PI;
-	const double angle_iceflow=(36.+ (46./60.) + (23./3600.) + 90.)/DEGRAD;
+	double angle_iceflow=(36.+ (46./60.) + (23./3600.) + 90.)/DEGRAD;
 	const double MFT=1./100.*2.54/1.*12.; // (something in ft.)*1m/100cm*2.54cm/1in*12in
 
 	//Functions
 	void Read_Indicatrix_Par(string sn1file,string sn2file,string sn3file, Detector *detector, Settings *settings1 ); //reads in files and gets depth vectors
 	void Smooth_Indicatrix_Par();//smooths vectors 1,2,3
-	double Time_Diff_TwoRays(vector <double> res, vector <double> zs, double refl_angle, Settings *settings1);
+	double Time_Diff_TwoRays(vector <double> res, vector <double> zs, double refl_angle, Position interaction_vertex, Settings *settings1);
 	double getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,double angle_iceflow, double n_e1, double n_e2,TVector3 &p_e1,TVector3 &p_e2);
 
 	TVector3 Get_p_e1();

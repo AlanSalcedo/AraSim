@@ -1,7 +1,6 @@
-//ADD LIBRARIES LATER?
-
 #include "Settings.h"
 #include "Detector.h"
+#include "Position.h"
 
 #include "TVector3.h"
 #include "TGraph.h" 
@@ -596,7 +595,7 @@ void Birefringence::Smooth_Indicatrix_Par(){ //wrap the smooth code with a funct
 
  }//end smoothing function
 
-double Birefringence::Time_Diff_TwoRays(vector <double> res, vector <double> zs, double refl_angle, Settings *settings1){
+double Birefringence::Time_Diff_TwoRays(vector <double> res, vector <double> zs, double refl_angle, Position interaction_vertex, Settings *settings1){
 	
 
      int stationID = settings1->DETECTOR_STATION;
@@ -643,6 +642,13 @@ double Birefringence::Time_Diff_TwoRays(vector <double> res, vector <double> zs,
 	TVector3 yhat(station_coords[stationID-1][0]-pulser_coords[0],
                       station_coords[stationID-1][1]-pulser_coords[1],
                       0.); // yhat points from pulser to station	
+
+/**	
+	TVector3 yhat(0.-interaction_vertex.GetX(),
+                      0.-interaction_vertex.GetY(),
+                      0.); // yhat points from interaction vertex to station	
+	angle_iceflow=0.;
+**/	
 	if (yhat.Mag()<HOWSMALLISTOOSMALL){
         	cout << "yhat mag is " << yhat.Mag() << "\n";
         }
@@ -651,6 +657,8 @@ double Birefringence::Time_Diff_TwoRays(vector <double> res, vector <double> zs,
 //	cout << "testing yhat is: " <<yhat[0] << ", " << yhat[1] << endl; 
 	
 	double deltantimeslength_alongpath=0.;
+
+	int switched_polarizations = 0;
 	
 	for (int istep=0;istep<res.size();istep++) {
 cout << "step: " << istep << endl;
@@ -690,9 +698,10 @@ cout << "zs: " << zs[istep] << endl;
 			if (rhat_thisstep.Mag()<1.E-8){
               			cout << "before calling getDeltaN at place 2, rhat_thisstep is " << rhat_thisstep[0] << "\t" << rhat_thisstep[1] << "\t" << rhat_thisstep[2] << "\n";
 			}
-		
+		  
 			double deltan_alongpath=getDeltaN(settings1->BIAXIAL,nvec_thisstep,rhat_thisstep,angle_iceflow,n_e1,n_e2,p_e1,p_e2);
 		
+
 			if (istep==1) {
 				p_e1_src = p_e1.Unit();
 				p_e2_src = p_e2.Unit();				
