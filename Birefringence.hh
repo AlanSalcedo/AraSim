@@ -1,6 +1,7 @@
 #include "TVector3.h"
 #include "Vector.h"
 #include "Position.h"
+#include "Constants.h"
 #include <string>
 #include <vector>
 #include <iostream>
@@ -50,12 +51,12 @@ class Birefringence {
 	TVector3 Get_p_e1();
 	TVector3 Get_p_e2();
 
-	double Power_split_factor(Vector Pol_vector, int bire_ray_cnt, Settings *settings1);
+	double Power_split_factor(Vector Pol_vector, int bire_ray_cnt, double refl_angle, Settings *settings1);
 	void Principal_axes_polarization(Vector &Pol_vector, int bire_ray_cnt, int max_bire_ray_cnt, Settings *settings1);
 	void Time_shift_and_power_split(double *V_forfft, int size, int T_shift, double split_factor, int bire_ray_cnt, int max_bire_ray_cnt, Settings *settings1);
 	void Store_V_forfft_for_interference(double *V_forfft, double *V_forfft_bire, int size, int bire_ray_cnt);
 	void Two_rays_interference(double *V_forfft, double *V_forfft_bire_1, double *V_forfft_bire_2, int size, int max_bire_ray_cnt, Settings *settings1);
-	int Reflected_ray_remove_bire(double refl_angle);
+	int Reflected_ray_remove_bire(double refl_angle, int max_bire_ray_cnt);
 
 	//Destructor
 	~Birefringence();

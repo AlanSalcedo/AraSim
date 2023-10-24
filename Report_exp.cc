@@ -420,6 +420,7 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                     // cout << i << " : " << j << " : " << k << endl;
 
                     RayStep.clear();    // remove previous values
+cout << "(X,Y,Z) station coords in Report.cc: " << "(" << detector->stations[i].strings[j].antennas[k].GetX() << ", " << detector->stations[i].strings[j].antennas[k].GetY() << ", "<< detector->stations[i].strings[j].antennas[k].GetZ()<< ")" << endl;
                     raysolver->Solve_Ray(event->Nu_Interaction[0].posnu, detector->stations[i].strings[j].antennas[k], icemodel, ray_output, settings1, RayStep);   // solve ray between source and antenna
 
 //Testing Birefringence
@@ -455,8 +456,21 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                         while (ray_sol_cnt < ray_output[0].size())
                         {
                             // for number of soultions (could be 1 or 2)
-			    
-			     double time_diff_birefringence = birefringence->Time_Diff_TwoRays(RayStep[ray_sol_cnt][0], RayStep[ray_sol_cnt][1], ray_output[3][ray_sol_cnt], event->Nu_Interaction[0].posnu, settings1);
+cout << "ray_sol_cnt: " << ray_sol_cnt << endl;
+
+cout << "(X,Y) interaction vertex in Report.cc: " << "("<< event->Nu_Interaction[0].posnu.GetX() << ", " << event->Nu_Interaction[0].posnu.GetY() <<")"<< endl;
+
+cout << "(X,Y) station coords in Report.cc: " << "(" << detector->stations[i].strings[j].antennas[k].GetX() << ", " << detector->stations[i].strings[j].antennas[k].GetY() << ")" << endl;
+
+Position src_tmp = event->Nu_Interaction[0].posnu_from_antcen;
+//Position trg_tmp = detector->stations[i].strings[j].antennas[k];
+
+//raysolver->Earth_to_Flat_same_depth(src_tmp, trg_tmp,icemodel);			    
+//cout << "Flat same depth (X,Y) station coords in Report.cc: " << "(" << trg_tmp.GetX()<< ", " << trg_tmp.GetY() << ")" << endl;
+
+cout << "From antenna center (X,Y) interaction vertex in Report.cc: " << "("<< src_tmp.GetX() << ", " << src_tmp.GetY() <<")"<< endl;
+
+			     double time_diff_birefringence = birefringence->Time_Diff_TwoRays(RayStep[ray_sol_cnt][0], RayStep[ray_sol_cnt][1], ray_output[3][ray_sol_cnt], event->Nu_Interaction[0].posnu_from_antcen, settings1);
         		     cout << "Two Ray Time Difference: " << time_diff_birefringence << endl;	
 
                             stations[i].strings[j].antennas[k].arrival_time.push_back(ray_output[4][ray_sol_cnt]);
@@ -846,6 +860,14 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                                                 double V_forfft[stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]];
                                                 double T_forfft[stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]];
 
+//CHANGES HERE! 
+						int max_bire_ray_cnt = settings1->BIREFRINGENCE + 1;
+                                                double V_forfft_bire[max_bire_ray_cnt][stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]];
+
+						for ( int bire_ray_cnt = 0; bire_ray_cnt < max_bire_ray_cnt; bire_ray_cnt++ ){
+
+                                                max_bire_ray_cnt = birefringence->Reflected_ray_remove_bire(ray_output[3][ray_sol_cnt], max_bire_ray_cnt);
+
                                                 for (int n = 0; n < stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]; n++)
                                                 {
 
@@ -874,17 +896,10 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
                                                 // this forward fft volts_forfft is now in unit of V at each freq we can just apply each bin's gain factor to each freq bins
 
 //CHANGES HERE! 
-						int max_bire_ray_cnt = settings1->BIREFRINGENCE + 1;
-                                                double V_forfft_bire[max_bire_ray_cnt][stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]];
-
-						for ( int bire_ray_cnt = 0; bire_ray_cnt < max_bire_ray_cnt; bire_ray_cnt++ ){
-
-                                                max_bire_ray_cnt = birefringence->Reflected_ray_remove_bire(ray_output[3][ray_sol_cnt]);
-
 						int T_shift_bire = int(time_diff_birefringence/dT_forfft);
-
-						double split_factor_bire = birefringence->Power_split_factor(Pol_vector_src, bire_ray_cnt, settings1);				
-
+cout << "Pol_vector_src" << Pol_vector_src[0] << Pol_vector_src[1] << Pol_vector_src[2] << endl;
+						double split_factor_bire = birefringence->Power_split_factor(Pol_vector_src, bire_ray_cnt, ray_output[3][ray_sol_cnt], settings1);				
+cout << "Split factor: " << split_factor_bire << endl;
 						birefringence->Time_shift_and_power_split(V_forfft, stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt], T_shift_bire, split_factor_bire, bire_ray_cnt, max_bire_ray_cnt, settings1);
 						
                                                 // without any phase consideration,
@@ -1409,7 +1424,15 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
 
                                             double V_forfft[stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]];
                                             double T_forfft[stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]];
+	//ONLY FOR BIREFRINGENCE
+//cout << "GETS HERE 1" << endl;
+					    int max_bire_ray_cnt = settings1->BIREFRINGENCE + 1;
+					    double V_forfft_bire[max_bire_ray_cnt][stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]];
                                             
+					    for ( int bire_ray_cnt = 0; bire_ray_cnt < max_bire_ray_cnt; bire_ray_cnt++ ){ 
+cout << "max_bire_ray_cnt before excluding reflected: " << max_bire_ray_cnt << endl;					
+					    max_bire_ray_cnt = birefringence->Reflected_ray_remove_bire(ray_output[3][ray_sol_cnt], max_bire_ray_cnt);
+cout << "max_bire_ray_cnt after: " << max_bire_ray_cnt << endl;	
 //                                            cout << stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt] << endl;
 //                                            cout << waveform_bin << endl;
 
@@ -1442,12 +1465,13 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
 
 	//ONLY FOR BIREFRINGENCE
 //cout << "GETS HERE 1" << endl;
-					    int max_bire_ray_cnt = settings1->BIREFRINGENCE + 1;
-					    double V_forfft_bire[max_bire_ray_cnt][stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]];
+//					    int max_bire_ray_cnt = settings1->BIREFRINGENCE + 1;
+//					    double V_forfft_bire[max_bire_ray_cnt][stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]];
 
 //cout << "GETS HERE 2" << endl;
-//					    for (int n = 0; n < stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]; n++){
-//						cout << "V_fft just after loading: " << V_forfft[n] << endl;
+					    for (int n = 0; n < stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]; n++){
+						cout << "V_fft just after loading: " << V_forfft[n] << endl;
+					    }
 //						V_forfft_birefringence[0][n] = V_forfft[n];
 							
 //						int T_shift = int(time_diff_birefringence/dT_forfft);
@@ -1461,10 +1485,10 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
 //					    } 
 
 //cout << "GETS HERE 3" << endl; MAKE the "2" a variable!!
-					    for ( int bire_ray_cnt = 0; bire_ray_cnt < max_bire_ray_cnt; bire_ray_cnt++ ){ 
-					
-					    max_bire_ray_cnt = birefringence->Reflected_ray_remove_bire(ray_output[3][ray_sol_cnt]);
-						
+//					    for ( int bire_ray_cnt = 0; bire_ray_cnt < max_bire_ray_cnt; bire_ray_cnt++ ){ 
+//cout << "max_bire_ray_cnt before excluding reflected: " << max_bire_ray_cnt << endl;					
+//					    max_bire_ray_cnt = birefringence->Reflected_ray_remove_bire(ray_output[3][ray_sol_cnt]);
+//cout << "max_bire_ray_cnt after: " << max_bire_ray_cnt << endl;	
 //					    for (int i = 0; i < V_bin_size; i++){
 //							cout << "V1: "<< V_forfft_birefringence[0][i] << endl;
 //							cout << "V2: "<< V_forfft_birefringence[1][i] << endl;
@@ -1511,11 +1535,17 @@ void Report::Connect_Interaction_Detector_V2(Event *event, Detector *detector, R
 //						}
 //					    }				
 
-					    double split_factor_bire = birefringence->Power_split_factor(Pol_vector, bire_ray_cnt, settings1);
-					
+					    double split_factor_bire = birefringence->Power_split_factor(Pol_vector, bire_ray_cnt, ray_output[3][ray_sol_cnt], settings1);
+//MADE CHANGE HERE!
+cout << "Split factor: " << split_factor_bire << endl;
+
 					    birefringence->Time_shift_and_power_split(V_forfft, stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt], T_shift_bire, split_factor_bire, bire_ray_cnt, max_bire_ray_cnt, settings1);	
+
+for (int n = 0; n < stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]; n++){
+     cout << "V_forfft after time shift and split factor: " << V_forfft[n] << endl;
+}
 					    
-cout << "Flag 2" << endl;
+//cout << "Flag 2" << endl;
 //cout << "split_factor: " << split_factor << endl; 
 //Multiply V_forfft by the corresponding projection factor
 
@@ -1528,9 +1558,9 @@ cout << "Flag 2" << endl;
 //cout << "Flag 3" << endl; 
                                             Tools::realft(V_forfft, 1, stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]);                                            
 
-//for (int n = 0; n < stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]; n++){
-//cout << "V_forfft just after fft: " << V_forfft[n] << endl;
-//}
+for (int n = 0; n < stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]; n++){
+cout << "V_forfft just after fft: " << V_forfft[n] << endl;
+}
 
 
                                             dF_Nnew = 1. / ((double)(stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]) *(dT_forfft) *1.e-9);    // in Hz
@@ -1569,6 +1599,7 @@ cout << "Flag 2" << endl;
                                                         freq_tmp, icemodel->GetN(detector->stations[i].strings[j].antennas[k]));
                                                 }
                                             }                                            
+cout << "Pol_vector_src: " << Pol_vector[0] << ", " << Pol_vector[1] << ", " << Pol_vector[2] << endl;
                                             
                                             icemodel->GetFresnel(ray_output[1][ray_sol_cnt],    // launch_angle
                                                 ray_output[2][ray_sol_cnt], // rec_angle
@@ -1584,7 +1615,9 @@ cout << "Flag 2" << endl;
 //CHANGED HERE: Overwrite Pol_vector only for birefringence!
 				
 //					   Pol_vector = Vector(Pol_birefringence[bire_ray_cnt][0], Pol_birefringence[bire_ray_cnt][1], Pol_birefringence[bire_ray_cnt][2]).Unit(); 
+cout << "Pol_vector_trg before polarization: " << Pol_vector[0] << ", " << Pol_vector[1] << ", " << Pol_vector[2] << endl;
   					    birefringence->Principal_axes_polarization(Pol_vector, bire_ray_cnt, max_bire_ray_cnt, settings1);                                          
+cout << "Pol_vector_trg after polarization: " << Pol_vector[0] << ", " << Pol_vector[1] << ", " << Pol_vector[2] << endl;
                                             
                                             //Justin's Method
                                             
@@ -1716,9 +1749,9 @@ cout << "Flag 2" << endl;
                                             //End Debugging
 //CHANGED HERE:
 //
-//						for (int n = 0; n < stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt] ;n++){
-//							cout << "V_forfft after applying antenna's and electronics: " << V_forfft[n] << endl;
-//						}
+for (int n = 0; n < stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt] ;n++){
+	cout << "V_forfft after applying antenna's and electronics: " << V_forfft[n] << endl;
+}
 
                                             // now get time domain waveform back by inv fft
                                             // cout << "ggggggggg" << endl;
@@ -1737,10 +1770,10 @@ cout << "Flag 2" << endl;
 //                                              std::cout << V_forfft[i] << ", ";
                                             }
 //MADE CHANGES HERE!!
-//					    for (int n = 0; n < stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt] ;n++){
-//                                                      V_forfft_bire[bire_ray_cnt][n] = V_forfft[n];
-//							cout << "V_forfft back in time domain: " << V_forfft_bire[bire_ray_cnt][n] << endl;
-//                                            }
+for (int n = 0; n < stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt] ;n++){
+	V_forfft_bire[bire_ray_cnt][n] = V_forfft[n];
+	cout << "V_forfft back in time domain: " << V_forfft_bire[bire_ray_cnt][n] << endl;
+}
 
                                             birefringence->Store_V_forfft_for_interference(V_forfft, V_forfft_bire[bire_ray_cnt], stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt], bire_ray_cnt);
 
@@ -1756,9 +1789,9 @@ cout << "Flag 2" << endl;
 					    birefringence->Two_rays_interference(V_forfft, V_forfft_bire[0], V_forfft_bire[1], stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt], max_bire_ray_cnt, settings1);
 
 //					    cout << "Time step: " << dT_forfft << endl;
-//					    for (int n=0;  n < stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]; n++ ){
-//                                                	cout << "Added back in time domain : " << V_forfft[n] << endl;
-//						}
+for (int n=0;  n < stations[i].strings[j].antennas[k].Nnew[ray_sol_cnt]; n++ ){
+	cout << "Added back in time domain : " << V_forfft[n] << endl;
+}
 
 //TO HERE	
 

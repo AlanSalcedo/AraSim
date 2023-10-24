@@ -1,7 +1,7 @@
 #include "Settings.h"
 #include "Detector.h"
 #include "Position.h"
-
+#include "Constants.h"
 #include "TVector3.h"
 #include "TGraph.h" 
 #include "Vector.h"
@@ -81,10 +81,15 @@ double Birefringence::getDeltaN(int BIAXIAL,vector<double> nvec,TVector3 rhat,do
     rhat_iceflowalongx[i]=sum;
   }
 
+cout << "rhat is " << rhat[0] << "\t" << rhat[1] << "\t" << rhat[2] << "\n";
+//rhat_iceflowalongx[0] = 0.136003;
+//rhat_iceflowalongx[1] = 0.848061;
+cout << "rhat_iceflowalongx is " << rhat_iceflowalongx[0] << "\t" << rhat_iceflowalongx[1] << "\t" << rhat_iceflowalongx[2] << "\n";
 
 
   TVector3 nominal_pe1=myz.Cross(rhat_iceflowalongx);
 
+cout << "nominal pe_1 :" << nominal_pe1[0] << "\t" << nominal_pe1[1] << "\t" << nominal_pe1[2] << "\n";
 
 
   if (nominal_pe1.Mag()<HOWSMALLISTOOSMALL) {
@@ -446,9 +451,9 @@ int number_of_antennas=0;
 //		}
 //	}
 
-detector_origin_depth = detector->detector_depth;
+//detector_origin_depth = detector->detector_depth;
 
-cout << "Detector depth" << detector_origin_depth << endl;
+//cout << "Detector depth" << detector_origin_depth << endl;
 
 int BIAXIAL = settings1->BIAXIAL;
 
@@ -468,13 +473,13 @@ ifstream n3file(sn3file.c_str());
     n1file >> stemp;
     for (int i=0;i<NDEPTHS_NS;i++) {
       n1file >> thisdepth >> thisn;
-      vdepths_n1.push_back(-1.*thisdepth - detector_origin_depth); 
+      vdepths_n1.push_back(-1.*thisdepth); 
       n1vec.push_back(thisn);
      }
     n2file >> stemp;
     for (int i=0;i<NDEPTHS_NS;i++) {//loops through this data
       n2file >> thisdepth >> thisn;//piping into thisn
-      vdepths_n2.push_back(-1.*thisdepth - detector_origin_depth);
+      vdepths_n2.push_back(-1.*thisdepth);
       if (BIAXIAL==1)//
 	n2vec.push_back(thisn);//adds our data into thisn for certain properties
       else if (BIAXIAL==0 || BIAXIAL==-1)
@@ -484,7 +489,7 @@ ifstream n3file(sn3file.c_str());
     n3file >> stemp; //n3file data into our stemp file!
     for (int i=0;i<NDEPTHS_NS;i++) {//same loop as for n1 and n2
       n3file >> thisdepth >> thisn;//from here below, same stuff as the last one for different biaxial values
-      vdepths_n3.push_back(-1.*thisdepth - detector_origin_depth);
+      vdepths_n3.push_back(-1.*thisdepth);
       if (BIAXIAL==0 || BIAXIAL==1)
 	n3vec.push_back(thisn);
       else if (BIAXIAL==-1)
@@ -525,8 +530,8 @@ void Birefringence::Smooth_Indicatrix_Par(){ //wrap the smooth code with a funct
 
     vector<double> tmp;
     tmp.clear();
-
     tmp.resize(n1vec.size());
+
     int NSMOOTH=5;
     int min=(int)(((double)NSMOOTH)/2.);
     for (int i=0;i<min;i++) {
@@ -544,7 +549,6 @@ void Birefringence::Smooth_Indicatrix_Par(){ //wrap the smooth code with a funct
       tmp[i]=tmpdouble;
     }
     n1vec=tmp;
-
     tmp.clear();
     tmp.resize(n2vec.size());
  
@@ -585,14 +589,12 @@ void Birefringence::Smooth_Indicatrix_Par(){ //wrap the smooth code with a funct
     }
     n3vec=tmp;
 
-
     cout << "Smooth sizes are " << n1vec.size() << "\t" << n2vec.size() << "\t" << n3vec.size() << "\n";
     cout << "n's are \n";
     for (int i=0;i<n1vec.size();i++) {
       cout << "Smooth n1, n2, n3 are " << n1vec[i] << "\t" << n2vec[i] << "\t" << n3vec[i] << "\n";
       cout << "Depths: " << vdepths_n1[i] << "\t " << vdepths_n2[i] << "\t" << vdepths_n3[i] << "\n";
     }
-
  }//end smoothing function
 
 double Birefringence::Time_Diff_TwoRays(vector <double> res, vector <double> zs, double refl_angle, Position interaction_vertex, Settings *settings1){
@@ -637,18 +639,34 @@ double Birefringence::Time_Diff_TwoRays(vector <double> res, vector <double> zs,
     		pulser_coords[j]=pulser_coords[j]*MFT;
   	}	
 
+cout << "(X,Y) pulser_coords surv: " << "("<< pulser_coords[0] << ", " << pulser_coords[1] <<")"<< endl;
+cout << "(X,Y) station_coords surv: " << "("<< station_coords[stationID-1][0] << ", " << station_coords[stationID-1][1] <<")"<< endl;
 	//Finally define yhat
-	
+/**	
 	TVector3 yhat(station_coords[stationID-1][0]-pulser_coords[0],
                       station_coords[stationID-1][1]-pulser_coords[1],
                       0.); // yhat points from pulser to station	
 
-/**	
+**/
+
+  double rotate_toxalongiceflow[3][3]={{cos(angle_iceflow) , 1.*sin(angle_iceflow),0. },
+                                       {-1.*sin(angle_iceflow), cos(angle_iceflow),0.},
+                                       {0.,0.,1.}};
+  double rotate_toxalongglobal[3][3];
+
+  for (int i=0;i<3;i++) {
+    for (int j=0;j<3;j++) {
+      rotate_toxalongglobal[i][j]=rotate_toxalongiceflow[j][i];
+    }
+
+  }	
+
 	TVector3 yhat(0.-interaction_vertex.GetX(),
                       0.-interaction_vertex.GetY(),
                       0.); // yhat points from interaction vertex to station	
-	angle_iceflow=0.;
-**/	
+
+cout << "(X,Y) interaction vertex: " << "("<< interaction_vertex.GetX() << ", " << interaction_vertex.GetY() <<")"<< endl;
+	
 	if (yhat.Mag()<HOWSMALLISTOOSMALL){
         	cout << "yhat mag is " << yhat.Mag() << "\n";
         }
@@ -660,7 +678,7 @@ double Birefringence::Time_Diff_TwoRays(vector <double> res, vector <double> zs,
 
 	for (int istep=0;istep<res.size();istep++) {
 cout << "step: " << istep << endl;
-//cout << "res: " << res[istep] << endl; 
+cout << "res: " << res[istep] << endl; 
 cout << "zs: " << zs[istep] << endl;	
 		nvec_thisstep.resize(3);
 
@@ -696,10 +714,36 @@ cout << "zs: " << zs[istep] << endl;
 			if (rhat_thisstep.Mag()<1.E-8){
               			cout << "before calling getDeltaN at place 2, rhat_thisstep is " << rhat_thisstep[0] << "\t" << rhat_thisstep[1] << "\t" << rhat_thisstep[2] << "\n";
 			}
-		  
-			double deltan_alongpath=getDeltaN(settings1->BIAXIAL,nvec_thisstep,rhat_thisstep,angle_iceflow,n_e1,n_e2,p_e1,p_e2);
-		
+cout <<"angle_iceflow"<< angle_iceflow <<endl;	
 
+TVector3 rhat_unrotate(rhat_thisstep[0], rhat_thisstep[1], rhat_thisstep[2]);
+
+for (int i=0;i<3;i++) {
+    double sum=0.;
+    for (int j=0;j<3;j++) {
+      sum+=rotate_toxalongglobal[i][j]*rhat_unrotate[j];
+    }
+    rhat_thisstep[i]=sum;
+  }
+
+	  
+			double deltan_alongpath=getDeltaN(settings1->BIAXIAL,nvec_thisstep,rhat_thisstep,angle_iceflow,n_e1,n_e2,p_e1,p_e2);
+cout << "p_e1: ("<<p_e1[0] <<", "<< p_e1[1] <<"," << p_e1[2] <<")" <<endl; 		
+cout << "p_e2: ("<<p_e2[0] <<", "<< p_e2[1] <<"," << p_e2[2] <<")" <<endl; 		
+
+TVector3 p_e1_toxalongiceflow(p_e1[0], p_e1[1], p_e1[2]);
+TVector3 p_e2_toxalongiceflow(p_e2[0], p_e2[1], p_e2[2]);
+
+for (int i=0;i<3;i++) {
+    double sum=0.;
+    double sum2=0.;
+    for (int j=0;j<3;j++) {
+      sum+=rotate_toxalongiceflow[i][j]*p_e1_toxalongiceflow[j];
+      sum2+=rotate_toxalongiceflow[i][j]*p_e2_toxalongiceflow[j];
+    }
+    p_e1[i]=sum;
+    p_e2[i]=sum2;
+  }
 			if (istep==1) {
 				p_e1_src = p_e1.Unit();
 				p_e2_src = p_e2.Unit();				
@@ -739,7 +783,7 @@ return p_e2;
 
 }
 
-double Birefringence::Power_split_factor(Vector Pol_vector, int bire_ray_cnt, Settings *settings1){
+double Birefringence::Power_split_factor(Vector Pol_vector, int bire_ray_cnt, double refl_angle, Settings *settings1){
 
     int BIREFRINGENCE = settings1->BIREFRINGENCE;
 
@@ -760,26 +804,30 @@ Pol_vector = Pol_vector.Unit();
 //p_e1_src = p_e1_src.Unit();
 //p_e2_src = p_e2_src.Unit();
 
-//cout << "Pol_vector: " << Pol_vector[0] << ", " << Pol_vector[1] << ", " << Pol_vector[2] << endl;
-//cout << "Pol_Vec: " << Pol_Vec[0] << ", " << Pol_Vec[1] << ", " << Pol_Vec[2] << endl;
+cout << "Pol_vector: " << Pol_vector[0] << ", " << Pol_vector[1] << ", " << Pol_vector[2] << endl;
+cout << "Pol_Vec: " << Pol_Vec[0] << ", " << Pol_Vec[1] << ", " << Pol_Vec[2] << endl;
 //cout << "p_e1_src: " << p_e1_src[0] << ", " << p_e1_src[1] << ", " << p_e1_src[2] << endl;
 //cout << "p_e2_src: " << p_e2_src[0] << ", " << p_e2_src[1] << ", " << p_e2_src[2] << endl;
 
 //cout << "split_factor default inside birefringence class: " << split_factor << endl;
-	
-	if (bire_ray_cnt == 0 ){
+	if (refl_angle < PI/2.){
+		return split_factor = 1;
+	}
+	else if (bire_ray_cnt == 0 ){
 		split_factor = abs( Pol_Vec.Dot(p_e1_src) ); 
 	}
 	else if (bire_ray_cnt == 1 ){
 		split_factor = abs( Pol_Vec.Dot(p_e2_src) );
 	}
 
+cout << "p_e1_src: ("<<p_e1_src[0] <<", "<< p_e1_src[1] <<"," << p_e1_src[2] <<")" <<endl; 		
+cout << "p_e2_src: ("<<p_e2_src[0] <<", "<< p_e2_src[1] <<"," << p_e2_src[2] <<")" <<endl; 		
 //cout << "split_factor after calculation: " << split_factor << endl;
 
      }
-//     else if (BIREFRINGENCE==0 || max_bire_ray_cnt == 1){
-//	split_factor = 1;
-//     }
+     else if (BIREFRINGENCE==0){
+	split_factor = 1;
+     }
 
 return split_factor;
 
@@ -805,12 +853,18 @@ void Birefringence::Time_shift_and_power_split(double *V_forfft, int size, int T
      
      if(BIREFRINGENCE==1 && max_bire_ray_cnt ==2){
 	  for (int n = 0; n < size; n++){
-		if (bire_ray_cnt == 0){
+		if (bire_ray_cnt == 1){
 			V_forfft[n] *= split_factor;
                 }
-                else if (bire_ray_cnt == 1){
-                	V_forfft[n] = V_forfft[n - T_shift] * split_factor;
+                else if (bire_ray_cnt == 0){
+			if ( n + T_shift < size){
+				V_forfft[n] = V_forfft[n + T_shift] * split_factor;
+                        }     
+                        else{
+                               V_forfft[n] = 0.;      
+                        }
                 }
+cout << "V_forfft inside Time shift function: " << V_forfft[n] << endl;
          }
      }
 }
@@ -834,9 +888,11 @@ void Birefringence::Two_rays_interference(double *V_forfft, double *V_forfft_bir
      }
 }
 
-int Birefringence::Reflected_ray_remove_bire(double refl_angle){
-
+int Birefringence::Reflected_ray_remove_bire(double refl_angle, int max_bire_ray_cnt){
+cout << "refl_angle: " << refl_angle << endl;
+cout << "PI: " << PI << endl;
 	if (refl_angle < PI/2.) {   // the ray is reflected at the surface
 		return 1;
 	}
+return max_bire_ray_cnt;
 }
