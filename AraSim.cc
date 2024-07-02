@@ -1,10 +1,37 @@
-// ROOT includes
+/*
+ * AraSim Simulation Program
+ *
+ * This program simulates neutrino interactions in ice using the AraSim framework. It includes the following steps:
+ * 1. Initialization: Setting up various components like settings, ice model, detector, and others.
+ * 2. Configuration: Reading setup files and applying configurations.
+ * 3. Event Generation: Simulating neutrino events and their interactions in the ice.
+ * 4. Trigger and Signal Processing: Applying trigger conditions and processing signals.
+ * 5. Data Recording: Storing the results in ROOT files and calculating efficiencies.
+ * 6. Summary and Cleanup: Summarizing results, cleaning up resources, and finalizing the simulation.
+ *
+ * The program supports various configurations and modes, including different random number generators, 
+ * event generation modes, and compatibility checks. The output is stored in ROOT files for further analysis.
+ *
+ * Usage:
+ *   ./AraSim [setup file] [run number] [output directory]
+ *
+ * Example:
+ *   ./AraSim setup.txt 1 outputs
+ *
+ * Dependencies:
+ *   - ROOT libraries for file operations and data structures.
+ *   - AraSim libraries for simulation components and utilities.
+ *
+ * Date: 06/02/2024
+ */
+
+// ROOT includes for file operations, random number generation, and tree structure
 #include "TFile.h"
 #include "TRandom3.h" 
 #include "TTree.h"
 
 // AraSim includes
-//vector and position must be first
+// Vector and Position must be first
 #include "Vector.h"
 #include "Position.h"
 
@@ -36,72 +63,82 @@ using namespace std;
     ClassImp(UsefulAtriStationEvent);
 #endif
 
-class EarthModel; //class
-
+// Forward declaration of test function
 void test();
 
+// Default output directory
 string outputdir="outputs";
 
-int main(int argc, char **argv) {   // read setup.txt file
-    
+int main(int argc, char **argv) {   
+    // Create settings object and print default values
     Settings *settings1 = new Settings();
 
     cout<<"\n\tDefault values!"<<endl;
-    cout<<"NNU : "<<settings1->NNU<<endl;
-    cout<<"ICE_MODEL : "<<settings1->ICE_MODEL<<endl;
-    cout<<"NOFZ : "<<settings1->NOFZ<<endl;
-    cout<<"CONSTANTICETHICKNESS : "<<settings1->CONSTANTICETHICKNESS<<endl;
-    cout<<"FIXEDELEVATION : "<<settings1->FIXEDELEVATION<<endl;
-    cout<<"MOOREBAY : "<<settings1->MOOREBAY<<endl;
-    cout<<"EXPONENT : "<<settings1->EXPONENT<<endl;
-    cout<<"DETECTOR : "<<settings1->DETECTOR<<endl;
+    cout<<"NNU: "<<settings1->NNU<<endl;
+    cout<<"ONLY_PASSED_EVENTS: "<<settings1->ONLY_PASSED_EVENTS<<endl;
+    cout<<"NNU_PASSED : "<<settings1->NNU_PASSED<<endl;
+    cout<<"EXPONENT: "<<settings1->EXPONENT<<endl;
+    cout<<"POSNU_RADIUS : "<<settings1->POSNU_RADIUS<<endl;
+    cout<<"INTERACTION_MODE: "<<settings1->INTERACTION_MODE<<endl;
+    cout<<"NOISE: "<<settings1->NOISE<<endl;
+    cout<<"DETECTOR: "<<settings1->DETECTOR<<endl;
+    cout<<"DETECTOR_STATION: "<<settings1->DETECTOR_STATION<<endl;
+    cout<<"DETECTOR_STATION_LIVETIME_CONFIG: "<<settings1->DETECTOR_STATION_LIVETIME_CONFIG<<endl;
+    cout<<"NOFZ: "<<settings1->NOFZ<<endl;
+    cout<<"RANDOM_MODE: "<<settings1->RANDOM_MODE<<endl;
 
-    //string setupfile = "setup.txt";
+    // Variables to handle setup file, run number, and output directory
     string setupfile;
     string run_no;
+
+    // Determine the setup file based on command line arguments
     if (argc<2) { // no setup file input, use default
-        setupfile = "setup.txt";
-        cout<<"setupfile : "<<setupfile<<endl;
+        setupfile = "./SETUP/setup.txt";
+        cout<<"\nSetup file: "<<setupfile<<endl;
     }
-    else if (argc > 1) { // read file!!
+    else if (argc > 1) { // read setup file provided
         setupfile = string( argv[1] );
-        cout<<"setupfile : "<<setupfile<<endl;
+        cout<<"\nSetup file: "<<setupfile<<endl;
     }
-    if (argc > 2) { // read file!!
+
+    // Determine the run number if provided
+    if (argc > 2) { 
         run_no = string( argv[2] );
-        cout<<"run number : "<<run_no<<endl;
+        cout<<"Run number : "<<run_no<<endl;
     }
-    if (argc > 3) { // read file!!
+
+    // Determine the output directory if provided
+    if (argc > 3) { 
         outputdir = string( argv[3] );
         if(outputdir[outputdir.size()-1]=='/') outputdir=outputdir.substr(0,outputdir.size()-1); // make sure outputdir doesn't have a / at the end
-        cout<<"outputdir : "<<outputdir<<endl;
+        cout<<"Output directory: "<<outputdir<<endl;
     }
-    // else { // no mode for argc > 2!
-    //  cout<<"too many info! just use default setup.txt file!"<<endl;
-    //  setupfile = "setup.txt";
-    // }
 
+    // Read setup file
     settings1->ReadFile(setupfile);
     cout<<"Read "<<setupfile<<" file!"<<endl;
 
+    // Check for compatibility errors in settings
     int settings_compatibility_error = settings1->CheckCompatibilitiesSettings();
     if (settings_compatibility_error > 0) {
         cerr<<"There are "<< settings_compatibility_error<<" errors from settings. Check error messages."<<endl;
         return -1;
     }
- 
+
+    // Print new values from settings
     cout<<"\n\tNew values!"<<endl;
-    cout<<"NNU : "<<settings1->NNU<<endl;
-    cout<<"ICE_MODEL : "<<settings1->ICE_MODEL<<endl;
-    cout<<"NOFZ : "<<settings1->NOFZ<<endl;
-    cout<<"CONSTANTICETHICKNESS : "<<settings1->CONSTANTICETHICKNESS<<endl;
-    cout<<"FIXEDELEVATION : "<<settings1->FIXEDELEVATION<<endl;
-    cout<<"MOOREBAY : "<<settings1->MOOREBAY<<endl;
-    cout<<"EXPONENT : "<<settings1->EXPONENT<<endl;
-    cout<<"DETECTOR : "<<settings1->DETECTOR<<endl;
+    cout<<"NNU: "<<settings1->NNU<<endl;
+    cout<<"ONLY_PASSED_EVENTS: "<<settings1->ONLY_PASSED_EVENTS<<endl;
+    cout<<"NNU_PASSED : "<<settings1->NNU_PASSED<<endl;
+    cout<<"EXPONENT: "<<settings1->EXPONENT<<endl;
     cout<<"POSNU_RADIUS : "<<settings1->POSNU_RADIUS<<endl;
-    cout << "EVENT_GENERATION_MODE: " << settings1->EVENT_GENERATION_MODE << endl;
-    // cout << "EVENT_NUM: " << settings1->EVENT_NUM << endl;
+    cout<<"INTERACTION_MODE: "<<settings1->INTERACTION_MODE<<endl;
+    cout<<"NOISE: "<<settings1->NOISE<<endl;
+    cout<<"DETECTOR: "<<settings1->DETECTOR<<endl;
+    cout<<"DETECTOR_STATION: "<<settings1->DETECTOR_STATION<<endl;
+    cout<<"DETECTOR_STATION_LIVETIME_CONFIG: "<<settings1->DETECTOR_STATION_LIVETIME_CONFIG<<endl;
+    cout<<"NOFZ: "<<settings1->NOFZ<<endl;
+    cout<<"RANDOM_MODE: "<<settings1->RANDOM_MODE<<endl;
 
     if (settings1->EVENT_GENERATION_MODE == 1){
         // string evtfile = "eventReadIn.txt";
